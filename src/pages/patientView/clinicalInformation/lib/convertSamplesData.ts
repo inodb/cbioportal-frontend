@@ -37,3 +37,9 @@ export default function (data?: Array<ClinicalDataBySampleId>):IConvertedSamples
 
     return output;
 }
+
+export function monkey() {
+
+    var one = 1 + 2;
+
+}
