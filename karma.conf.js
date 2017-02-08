@@ -6,6 +6,17 @@ process.env.NODE_ENV = 'test';
 
 var webpackConfig = require('./webpack.config');
 
+var path = require('path');
+
+webpackConfig.module.postLoaders =  [
+    {
+        test: /.tsx?$/,
+        include: path.resolve(__dirname, 'src/'),
+        exclude: /.spec./,
+        loader: 'istanbul-instrumenter-loader'
+    }
+];
+
 module.exports = function (config) {
     config.set({
         basePath: '',
@@ -37,10 +48,17 @@ module.exports = function (config) {
             'karma-webpack',
             'karma-phantomjs-launcher',
             'karma-spec-reporter',
-            'karma-sourcemap-loader'
+            'karma-sourcemap-loader',
+            'karma-coverage',
+            'karma-coverage-istanbul-reporter'
         ],
 
-        reporters: ['spec'],
+        coverageIstanbulReporter: {
+            reports: ['text-summary','json-summary','html'],
+            dir: './test/fixtures/outputs'
+        },
+
+        reporters: ['spec','coverage-istanbul'],
         port: 9876,
         colors: true,
         logLevel: config.LOG_INFO,
