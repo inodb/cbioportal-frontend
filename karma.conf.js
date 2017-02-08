@@ -17,6 +17,8 @@ webpackConfig.module.postLoaders =  [
     }
 ];
 
+webpackConfig.entry = [];
+
 module.exports = function (config) {
     config.set({
         basePath: '',
