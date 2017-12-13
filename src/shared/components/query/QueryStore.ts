@@ -32,7 +32,7 @@ import {
 } from "./QueryStoreUtils";
 import onMobxPromise from "shared/lib/onMobxPromise";
 import VirtualCohorts, {LocalStorageVirtualCohort} from "../../lib/VirtualCohorts";
-import getOverlappingStudies from "../../lib/getOverlappingStudies";
+import { getOverlappingTCGAStudies } from "../../lib/getOverlappingStudies";
 
 // interface for communicating
 export type CancerStudyQueryUrlParams = {
@@ -820,7 +820,7 @@ export class QueryStore
 	}
 
 	@computed public get getOverlappingStudiesMap() {
-		const overlappingStudyGroups = getOverlappingStudies(this.selectedStudies);
+		const overlappingStudyGroups = getOverlappingTCGAStudies(this.selectedStudies);
 		return _.chain(overlappingStudyGroups)
 			.flatten()
 			.keyBy((study:CancerStudy)=>study.studyId)

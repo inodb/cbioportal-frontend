@@ -963,6 +963,7 @@ export class ResultsViewPageStore {
                 //  an Immutable as the result of reduce, and MutationMapperStore when it is made immutable all the
                 //  mobx machinery going on in the readonly remoteDatas and observables somehow gets messed up.
                 return Promise.resolve(_.reduce(this.genes.result, (map: { [hugoGeneSymbol: string]: MutationMapperStore }, gene: Gene) => {
+                    debugger;
                     map[gene.hugoGeneSymbol] = new MutationMapperStore(AppConfig,
                         gene,
                         this.samples,

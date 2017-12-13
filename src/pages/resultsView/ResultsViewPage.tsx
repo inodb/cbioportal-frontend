@@ -18,7 +18,6 @@ import Chart from 'chart.js';
 import {CancerStudy, Sample} from "../../shared/api/generated/CBioPortalAPI";
 import AppConfig from 'appConfig';
 import AddThisBookmark from 'shared/components/addThis/AddThisBookmark';
-import getOverlappingStudies from "../../shared/lib/getOverlappingStudies";
 import OverlappingStudiesWarning from "../../shared/components/overlappingStudiesWarning/OverlappingStudiesWarning";
 import CNSegments from "./cnSegments/CNSegments";
 import './styles.scss';
@@ -139,10 +138,7 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                 {
                     ()=> {
                         if (resultsViewPageStore.studies.isComplete) {
-                            //return <OverlappingStudiesWarning studies={resultsViewPageStore.studies.result!}/>
-                            // disable overlapping studies warning until #3395
-                            // is implemented
-                            return <span></span>;
+                            return <OverlappingStudiesWarning studies={resultsViewPageStore.studies.result!}/>
                         } else {
                             return <span></span>;
                         }

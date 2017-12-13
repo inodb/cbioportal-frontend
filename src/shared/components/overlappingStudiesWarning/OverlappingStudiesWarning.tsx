@@ -1,10 +1,10 @@
 import * as React from 'react';
-import getOverlappingStudies from "../../lib/getOverlappingStudies";
+import { getOverlappingTCGAStudies } from "../../lib/getOverlappingStudies";
 import {CancerStudy} from "../../api/generated/CBioPortalAPI";
 
 export default class OverlappingStudiesWarning extends React.Component<{ studies:CancerStudy[] }, {}>{
     render(){
-        const overlapping = getOverlappingStudies(this.props.studies);
+        const overlapping = getOverlappingTCGAStudies(this.props.studies);
         if (overlapping.length > 0) {
             return (
                 <div className="alert alert-danger" style={{marginBottom: 0}}>

@@ -1,8 +1,8 @@
 import { assert } from 'chai';
-import getOverlappingStudies from "./getOverlappingStudies";
+import { getOverlappingTCGAStudies } from "./getOverlappingStudies";
 import {CancerStudy} from "../api/generated/CBioPortalAPI";
 
-describe('getOverlappingStudies',()=>{
+describe('getOverlappingTCGAStudies',()=>{
 
     it('finds overlapping studies based on pub/nonpub signature in studyId', ()=>{
 
@@ -11,7 +11,7 @@ describe('getOverlappingStudies',()=>{
             { studyId: 'moo1_tcga_pub'}
         ];
 
-        let ret = getOverlappingStudies(studies as CancerStudy[]);
+        let ret = getOverlappingTCGAStudies(studies as CancerStudy[]);
 
         assert.equal(ret.length, 0, 'shouldn\'t find anything');
 
@@ -21,7 +21,7 @@ describe('getOverlappingStudies',()=>{
             { studyId: 'moo_tcga_pub'}
         ];
 
-        ret = getOverlappingStudies(studies as CancerStudy[]);
+        ret = getOverlappingTCGAStudies(studies as CancerStudy[]);
 
         assert.equal(ret[0][0].studyId,'moo_tcga');
         assert.equal(ret[0][1].studyId,'moo_tcga_pub');
@@ -39,7 +39,7 @@ describe('getOverlappingStudies',()=>{
             { studyId: 'floo_tcga_2012'}
         ];
 
-        let ret = getOverlappingStudies(studies as CancerStudy[]);
+        let ret = getOverlappingTCGAStudies(studies as CancerStudy[]);
 
         assert.equal(ret.length, 2);
 
@@ -52,7 +52,7 @@ describe('getOverlappingStudies',()=>{
             { studyId: 'blca_mskcc_solit_2012'}
         ];
 
-        let ret = getOverlappingStudies(studies as CancerStudy[]);
+        let ret = getOverlappingTCGAStudies(studies as CancerStudy[]);
 
         assert.equal(ret.length, 0);
 
@@ -65,7 +65,7 @@ describe('getOverlappingStudies',()=>{
             { studyId: 'brca_tcga_pub'}
         ];
 
-        let ret = getOverlappingStudies(studies as CancerStudy[]);
+        let ret = getOverlappingTCGAStudies(studies as CancerStudy[]);
 
         assert.equal(ret.length, 1);
 
