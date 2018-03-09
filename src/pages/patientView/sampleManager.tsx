@@ -152,7 +152,8 @@ class SampleManager {
     getComponentForSample(sampleId: string,
                           fillOpacity: number = 1,
                           extraTooltipText: string = '',
-                          additionalContent: JSX.Element|null = null)
+                          additionalContent: JSX.Element|null = null,
+                          additionalTooltipContent: JSX.Element|null = null)
     {
         let sample = _.find(this.samples, (s: ClinicalDataBySampleId)=> {
             return s.id === sampleId;
@@ -166,6 +167,7 @@ class SampleManager {
                 fillOpacity={fillOpacity}
                 extraTooltipText={extraTooltipText}
                 additionalContent={additionalContent}
+                additionalTooltipContent={additionalTooltipContent}
             />
         );
     }

@@ -232,12 +232,15 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                         {sampleManager &&
                                          sampleManager.clinicalDataLegacyCleanAndDerived[sample.id] &&
                                          getSpanElementsFromCleanData(sampleManager.clinicalDataLegacyCleanAndDerived[sample.id], 'lgg_ucsf_2014')}
-                                    </span>
+                                    </span>,
+                                    hasGDDPred &&
+                                        <GenomeDrivenDiagnosis prediction={patientViewPageStore.genomeDrivenDiagnosis.result[sample.id]} addTooltip={false}
+                                         /> || null
                                 )
                             }
                         </span>
                         {hasGDDPred &&
-                            <GenomeDrivenDiagnosis prediction={patientViewPageStore.genomeDrivenDiagnosis.result[sample.id]}
+                            <GenomeDrivenDiagnosis prediction={patientViewPageStore.genomeDrivenDiagnosis.result[sample.id]} addTooltip={true}
                              />
                         }
                     </div>

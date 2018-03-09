@@ -48,23 +48,28 @@ export const MEDIUM_CONFIDENCE_PREDICTION = 50;
 
 interface IGenomeDrivenDiagnosisProps {
     prediction: GDDOutput;
+    addTooltip: boolean;
 }
 
 export default class GenomeDrivenDiagnosis extends React.Component<IGenomeDrivenDiagnosisProps, {}> {
     public render() {
-        return (
-            <DefaultTooltip
-                placement='bottomLeft'
-                trigger={['hover', 'focus']}
-                overlay={this.tooltipContent()}
-                destroyTooltipOnHide={false}
-                onPopupAlign={placeArrowBottomLeft}
-            >
-                <span style={{paddingLeft:2}}>
-                    {this.predictionContent()}
-                </span>
-            </DefaultTooltip>
-        );
+        if (this.props.addTooltip) {
+            return (
+                <DefaultTooltip
+                    placement='bottomLeft'
+                    trigger={['hover', 'focus']}
+                    overlay={this.tooltipContent()}
+                    destroyTooltipOnHide={false}
+                    onPopupAlign={placeArrowBottomLeft}
+                >
+                    <span style={{paddingLeft:2}}>
+                        {this.predictionContent()}
+                    </span>
+                </DefaultTooltip>
+            );
+        } else {
+            return this.tooltipContent();
+        }
     }
 
     @computed private get isInAllowedCancerTypes() {
@@ -87,9 +92,9 @@ export default class GenomeDrivenDiagnosis extends React.Component<IGenomeDriven
         return this.confidenceAsPerc > MEDIUM_CONFIDENCE_PREDICTION && this.confidenceAsPerc <= HIGH_CONFIDENCE_PREDICTION;
     }
 
-    private predictionContent() {
+    private predictionText() {
         if (!this.isInAllowedCancerTypes || this.hasMatchingDiagnosis) {
-            return <a>(GDD)</a>
+            return null;
         } else {
             let textType = "";
             let icon:JSX.Element|null = null;
@@ -100,30 +105,43 @@ export default class GenomeDrivenDiagnosis extends React.Component<IGenomeDriven
                 textType = "text-warning";
                 icon = <i className="fa fa-exclamation-triangle" style={{color:"darkorange"}}></i>;
             }
-
-            return <a>
-                (GDD: <span className={textType} data-test="gdd-prediction">
-                    {this.cleanCancerType(this.props.prediction.Pred1)}
-                </span> {icon})
-            </a>
+            return (
+                <span>
+                    : <span className={textType} data-test="gdd-prediction">
+                        {this.cleanCancerType(this.props.prediction.Pred1)}
+                    </span> {icon}
+                </span>
+            );
         }
     }
 
+    private predictionContent() {
+        return <a>(GDD{this.predictionText()})</a>
+    }
+
     private tooltipContent() {
+        const divStyle = this.props.addTooltip? {maxWidth:250} : {};
+        const textAlign = this.props.addTooltip? {textAlign: "left"} : {};
+
         return (
-            <div style={{maxWidth:250}}>
-                <h6 style={{textAlign:"center"}}>
-                    Genome Driven Diagnosis (GDD)
-                </h6>
+            <div style={divStyle}>
+                {this.props.addTooltip?
+                    (<h6 style={textAlign}>
+                        Genome Driven Diagnosis (GDD)
+                    </h6>) :
+                    (<h5 style={textAlign}>
+                        Genome Driven Diagnosis (GDD){this.predictionText()}
+                    </h5>)
+                }
                 {   // Show warning when no diagnosis found
                     (!this.props.prediction.Diagnosed_Cancer_Type && (
-                    <p className="small text-danger" style={{textAlign:"center"}}>
+                    <p className="small text-danger" style={textAlign}>
                         No diagnosed cancer type found.
                     </p>
                   )) || 
                   // Show warning when diagnosis not part of 22 types
                   (!this.isInAllowedCancerTypes && (
-                    <p className="small text-danger" style={{textAlign:"center"}}>
+                    <p className="small text-danger" style={textAlign}>
                         The diagnosed
                         cancer type "{this.props.prediction.Diagnosed_Cancer_Type}" is not
                         part of the 22 tumor types GDD can predict.

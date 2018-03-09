@@ -14,6 +14,7 @@ interface ISampleInlineProps {
     tooltipEnabled?: boolean;
     extraTooltipText?: string;
     additionalContent?: JSX.Element|null;
+    additionalTooltipContent?: JSX.Element|null;
 }
 
 export default class SampleInline extends React.Component<ISampleInlineProps, {}> {
@@ -50,7 +51,7 @@ export default class SampleInline extends React.Component<ISampleInlineProps, {}
 
     public tooltipContent()
     {
-        const {sample, extraTooltipText} = this.props;
+        const {sample, extraTooltipText, additionalTooltipContent} = this.props;
 
         return (
             <div style={{ maxHeight:400, maxWidth:600, overflow:'auto' }}>
@@ -67,6 +68,7 @@ export default class SampleInline extends React.Component<ISampleInlineProps, {}
                     showTitleBar={false}
                     data={sample.clinicalData}
                 />
+                {additionalTooltipContent}
             </div>
         );
     }
