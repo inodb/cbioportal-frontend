@@ -185,7 +185,9 @@ export class PatientViewPageStore {
 
     readonly clinicalDataPatient = remoteData({
         await: () => this.pageMode === 'patient' ? [] : [this.derivedPatientId],
-        invoke: async() => fetchClinicalDataForPatient(this.studyId, this.patientId),
+        invoke: async() => fetchClinicalDataForPatient(this.studyId, this.patientId).then((cds) => {
+            return cds.filter((cd) => !AppConfig.guessCancerTypeForm|| ["SEX","GENDER"].indexOf(cd.clinicalAttributeId) > -1);
+        }),
         default: []
     });
 
@@ -312,7 +314,9 @@ export class PatientViewPageStore {
                 studyId: this.studyId
             }));
             const clinicalDataMultiStudyFilter = {identifiers} as ClinicalDataMultiStudyFilter;
-            return fetchClinicalData(clinicalDataMultiStudyFilter)
+            return fetchClinicalData(clinicalDataMultiStudyFilter).then((x) => {
+                return x.filter((cd) => !AppConfig.guessCancerTypeForm || ["SAMPLE_TYPE"].indexOf(cd.clinicalAttributeId) > -1);
+            });
         }
     }, []);
 
