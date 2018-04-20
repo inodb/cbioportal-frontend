@@ -30,11 +30,14 @@ import ValidationAlert from "shared/components/ValidationAlert";
 import AjaxErrorModal from "shared/components/AjaxErrorModal";
 import AppConfig from 'appConfig';
 import { getMouseIcon } from './SVGIcons';
+import GuessCancerTypeModal from './GuessCancerTypeModal';
+import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 
 import './patient.scss';
 import IFrameLoader from "../../shared/components/iframeLoader/IFrameLoader";
 
 const patientViewPageStore = new PatientViewPageStore();
+const ONLY_SHOW_CLINICAL_INFO = ["SAMPLE_TYPE"];
 
 (window as any).patientViewPageStore = patientViewPageStore;
 
@@ -265,6 +268,9 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
 
         return (
             <div className="patientViewPage">
+                {(AppConfig.guessCancerTypeForm) && (
+                    <GuessCancerTypeModal patientId={patientViewPageStore.patientId} studyId={patientViewPageStore.studyId} />
+                 )}
 
                 <AjaxErrorModal
                     show={(patientViewPageStore.ajaxErrors.length > 0)}

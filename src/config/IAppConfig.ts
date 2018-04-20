@@ -47,6 +47,7 @@ export interface IAppConfig {
     oncoprintOncoKbHotspotsDefault?:"disable"|"custom";
     // Select hide VUS by default
     oncoprintHideVUSDefault?:boolean;
+    guessCancerTypeForm?: string;
 }
 
 export type PriorityStudies = {
