@@ -45,7 +45,7 @@ function runResultsTestSuite(){
         assertScreenShotMatch(res);
     });
 
-    it('mutation tab', function(){
+    it.only('mutation tab', function(){
         browser.click("[href='#mutation_details']");
         browser.waitForVisible('.borderedChart svg',20000);
         browser.waitForEnabled('[data-test=view3DStructure]', 10000);
