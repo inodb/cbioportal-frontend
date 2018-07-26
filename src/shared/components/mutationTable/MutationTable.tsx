@@ -40,6 +40,25 @@ import NormalAlleleFreqColumnFormatter from "./column/NormalAlleleFreqColumnForm
 import ProteinChangeColumnFormatter from "./column/ProteinChangeColumnFormatter";
 import SampleColumnFormatter from "./column/SampleColumnFormatter";
 import StudyColumnFormatter from "./column/StudyColumnFormatter";
+<<<<<<< HEAD
+=======
+import AnnotationColumnFormatter from "./column/AnnotationColumnFormatter";
+import {ICosmicData} from "shared/model/Cosmic";
+import {IMyCancerGenomeData} from "shared/model/MyCancerGenome";
+import {IHotspotDataWrapper} from "shared/model/CancerHotspots";
+import {IOncoKbDataWrapper} from "shared/model/OncoKB";
+import {ICivicVariantDataWrapper, ICivicGeneDataWrapper} from "shared/model/Civic";
+import {IMutSigData} from "shared/model/MutSig";
+import DiscreteCNACache from "shared/cache/DiscreteCNACache";
+import OncoKbEvidenceCache from "shared/cache/OncoKbEvidenceCache";
+import GenomeNexusEnrichmentCache from "shared/cache/GenomeNexusEnrichment";
+import MrnaExprRankCache from "shared/cache/MrnaExprRankCache";
+import VariantCountCache from "shared/cache/VariantCountCache";
+import PubMedCache from "shared/cache/PubMedCache";
+import MutationCountCache from "shared/cache/MutationCountCache";
+import {ILazyMobXTableApplicationDataStore} from "shared/lib/ILazyMobXTableApplicationDataStore";
+import {ILazyMobXTableApplicationLazyDownloadDataFetcher} from "shared/lib/ILazyMobXTableApplicationLazyDownloadDataFetcher";
+>>>>>>> add genomenexus myvariantinfo types
 import generalStyles from "./column/styles.module.scss";
 import TumorAlleleFreqColumnFormatter from "./column/TumorAlleleFreqColumnFormatter";
 import ValidationStatusColumnFormatter from "./column/ValidationStatusColumnFormatter";
