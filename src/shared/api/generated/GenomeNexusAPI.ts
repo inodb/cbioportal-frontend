@@ -1,8 +1,34 @@
 import * as request from "superagent";
 
 type CallbackHandler = (err: any, res ? : request.Response) => void;
+export type Alleles = {
+    'allele': string
+
+};
+export type ClinVar = {
+    '_license': string
+
+        'alleleId': number
+
+        'alt': string
+
+        'chrom': string
+
+        'cytogenic': string
+
+        'gene': Gene
+
+        'hg19': Hg19
+
+        'hg38': Hg38
+
+        'hgvs': Hgvs
+
+};
 export type ColocatedVariant = {
-    'gnomad_nfe_allele': string
+    'dbSnpId': string
+
+        'gnomad_nfe_allele': string
 
         'gnomad_nfe_maf': string
 
@@ -13,6 +39,58 @@ export type ColocatedVariant = {
         'gnomad_eas_allele': string
 
         'gnomad_eas_maf': string
+
+};
+export type Cosmic = {
+    '_license': string
+
+        'alt': string
+
+        'chrom': string
+
+        'cosmicId': string
+
+        'hg19': Hg19
+
+        'mutFreq': number
+
+        'mutNt': string
+
+        'ref': string
+
+        'tumorSite': string
+
+};
+export type Dbsnp = {
+    '_class': string
+
+        'alleleOrigin': string
+
+        'alleles': Array < Alleles >
+
+        'alt': string
+
+        'chrom': string
+
+        'dbsnpBuild': number
+
+        'flags': Array < string >
+
+        'gene': Gene
+
+        'hg19': Hg19
+
+        'license': string
+
+        'ref': string
+
+        'rsid': string
+
+        'validated': boolean
+
+        'varSubtype': string
+
+        'vartype': string
 
 };
 export type EnsemblFilter = {
@@ -69,6 +147,12 @@ export type Exon = {
         'version': number
 
 };
+export type Gene = {
+    'geneId': string
+
+        'symbol': string
+
+};
 export type GeneXref = {
     'db_display_name': string
 
@@ -101,6 +185,24 @@ export type GenomicLocation = {
         'referenceAllele': string
 
         'variantAllele': string
+
+};
+export type Hg19 = {
+    'end': number
+
+        'start': number
+
+};
+export type Hg38 = {
+    'end': string
+
+        'start': string
+
+};
+export type Hgvs = {
+    'coding': Array < string >
+
+        'genomic': Array < string >
 
 };
 export type Hotspot = {
@@ -190,6 +292,48 @@ export type MutationAssessorAnnotation = {
         'license': string
 
 };
+export type Mutdb = {
+    'alt': string
+
+        'chrom': string
+
+        'cosmicId': string
+
+        'hg19': Hg19
+
+        'mutpredScore': number
+
+        'ref': string
+
+        'rsid': string
+
+        'uniprotId': string
+
+};
+export type MyVariantInfo = {
+    'clinVar': ClinVar
+
+        'cosmic': Cosmic
+
+        'dbsnp': Dbsnp
+
+        'hgvs': string
+
+        'mutdb': Mutdb
+
+        'snpeff': Snpeff
+
+        'vcf': Vcf
+
+        'version': number
+
+};
+export type MyVariantInfoAnnotation = {
+    'annotation': MyVariantInfo
+
+        'license': string
+
+};
 export type PdbHeader = {
     'compound': {}
 
@@ -214,6 +358,10 @@ export type PfamDomainRange = {
         'pfamDomainStart': number
 
         'pfamDomainEnd': number
+
+};
+export type Snpeff = {
+    'license': string
 
 };
 export type TranscriptConsequence = {
@@ -311,6 +459,8 @@ export type VariantAnnotation = {
 
         'mutation_assessor': MutationAssessorAnnotation
 
+        'my_variant_info': MyVariantInfoAnnotation
+
         'seq_region_name': string
 
         'start': number
@@ -336,6 +486,14 @@ export type VariantAnnotationSummary = {
         'variant': string
 
         'variantType': string
+
+};
+export type Vcf = {
+    'alt': string
+
+        'position': string
+
+        'ref': string
 
 };
 export type Version = {
