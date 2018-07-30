@@ -1,4 +1,6 @@
 import {Mutation} from "shared/api/generated/CBioPortalAPI";
+import {VariantAnnotation} from "shared/api/generated/GenomeNexusAPI";
+import {MutationAssessor, MyVariantInfo} from 'shared/api/generated/GenomeNexusAPIInternal';
 
 export function generateGenomeNexusQuery(data:Mutation)
 {
