@@ -1,15 +1,15 @@
 import * as React from 'react';
-import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusEnrichment";
+import { Mutation } from "shared/api/generated/CBioPortalAPI";
 import { MyVariantInfo as MyVariantInfoData } from 'shared/api/generated/GenomeNexusAPIInternal';
+import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusEnrichment";
 import MyVariantInfo from "shared/components/annotation/genomeNexus/MyVariantInfo.tsx";
-import { Mutation, DiscreteCopyNumberData } from "shared/api/generated/CBioPortalAPI";
 
-interface IDbSNPData {
+interface IDbsnpData {
     myVariantInfo: MyVariantInfoData;
 }
-export default class DbSNPColumnFormatter
+export default class DbsnpColumnFormatter
 {
-    private static getData(genomeNexusData: GenomeNexusCacheDataType | null): IDbSNPData | null {
+    private static getData(genomeNexusData: GenomeNexusCacheDataType | null): IDbsnpData | null {
         if (genomeNexusData === null ||
             genomeNexusData.status === "error" ||
             genomeNexusData.data === null) {
@@ -22,7 +22,7 @@ export default class DbSNPColumnFormatter
         return {myVariantInfo};
     }
     public static renderFunction(data: Mutation[], genomeNexusCache: GenomeNexusCache) {
-        const genomeNexusData = DbSNPColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
+        const genomeNexusData = DbsnpColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
         return (
             <div>
                 {genomeNexusData}
@@ -30,8 +30,8 @@ export default class DbSNPColumnFormatter
         );
     }
     public static download(data: Mutation[], genomeNexusCache: GenomeNexusCache): string {
-        const genomeNexusData = DbSNPColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
-        const dbSNPData = DbSNPColumnFormatter.getData(genomeNexusData);
+        const genomeNexusData = DbsnpColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
+        const dbSNPData = DbsnpColumnFormatter.getData(genomeNexusData);
 
         if (!dbSNPData) {
             return "";
