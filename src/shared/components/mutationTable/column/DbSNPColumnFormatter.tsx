@@ -1,9 +1,9 @@
 import * as React from 'react';
-import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusEnrichment";
-import { MyVariantInfo as MyVariantInfoData } from 'shared/api/generated/GenomeNexusAPIInternal';
-import MyVariantInfo from "shared/components/annotation/genomeNexus/MyVariantInfo.tsx";
 import { Mutation, DiscreteCopyNumberData } from "shared/api/generated/CBioPortalAPI";
-import { default as TableCellStatusIndicator, TableCellStatus } from "shared/components/TableCellStatus";
+import { MyVariantInfo as MyVariantInfoData } from 'shared/api/generated/GenomeNexusAPIInternal';
+import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusEnrichment";
+import MyVariantInfo from "shared/components/annotation/genomeNexus/MyVariantInfo.tsx";
+import { TableCellStatus } from "shared/components/TableCellStatus";
 
 interface IDbsnpData {
     myVariantInfo: MyVariantInfoData;
