@@ -19,7 +19,6 @@ export default class MyVariantInfo extends React.Component<IMyVariantInfoProps, 
     }
 
     public render() {
-        debugger;
         let mviContent: JSX.Element = (
             <span className={`${annotationStyles["annotation-item-text"]}`}/>
         )
