@@ -3,13 +3,14 @@ import { Mutation } from "shared/api/generated/CBioPortalAPI";
 import { MyVariantInfo as MyVariantInfoData } from 'shared/api/generated/GenomeNexusAPIInternal';
 import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusEnrichment";
 import MyVariantInfo from "shared/components/annotation/genomeNexus/MyVariantInfo.tsx";
+import { TableCellStatus } from "shared/components/TableCellStatus";
 
-interface IDbsnpData {
+interface IDbSNPData {
     myVariantInfo: MyVariantInfoData;
 }
-export default class DbsnpColumnFormatter
+export default class DbSNPColumnFormatter
 {
-    private static getData(genomeNexusData: GenomeNexusCacheDataType | null): IDbsnpData | null {
+    private static getData(genomeNexusData: GenomeNexusCacheDataType | null): IDbSNPData | null {
         if (genomeNexusData === null ||
             genomeNexusData.status === "error" ||
             genomeNexusData.data === null) {
@@ -22,7 +23,7 @@ export default class DbsnpColumnFormatter
         return {myVariantInfo};
     }
     public static renderFunction(data: Mutation[], genomeNexusCache: GenomeNexusCache) {
-        const genomeNexusData = DbsnpColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
+        const genomeNexusData = DbSNPColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
         return (
             <div>
                 {genomeNexusData}
@@ -30,8 +31,8 @@ export default class DbsnpColumnFormatter
         );
     }
     public static download(data: Mutation[], genomeNexusCache: GenomeNexusCache): string {
-        const genomeNexusData = DbsnpColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
-        const dbSNPData = DbsnpColumnFormatter.getData(genomeNexusData);
+        const genomeNexusData = DbSNPColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
+        const dbSNPData = DbSNPColumnFormatter.getData(genomeNexusData);
 
         if (!dbSNPData) {
             return "";
