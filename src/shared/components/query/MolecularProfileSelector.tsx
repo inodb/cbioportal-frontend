@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import {MolecularProfile} from "../../api/generated/CBioPortalAPI";
 import FontAwesome from "react-fontawesome";
-import * as styles_any from './styles.module.scss';
+import * as styles_any from './styles/styles.module.scss';
 import {observer} from "mobx-react";
 import classNames from 'classnames';
 import { FlexRow } from "../flexbox/FlexBox";
@@ -28,7 +28,7 @@ export default class MolecularProfileSelector extends QueryStoreComponent<{}, {}
 {
 	render()
 	{
-		if (!this.store.singleSelectedStudyId)
+		if (this.store.selectableSelectedStudyIds.length !== 1)
 			return null;
 
 		return (
@@ -36,9 +36,10 @@ export default class MolecularProfileSelector extends QueryStoreComponent<{}, {}
 				<SectionHeader className="sectionLabel" promises={[this.store.molecularProfiles]}>
 					Select Genomic Profiles:
 				</SectionHeader>
-				<div className={styles.group}>
+				<div className={styles.group} data-test="molecularProfileSelector">
 					{this.renderGroup("MUTATION_EXTENDED", "Mutation")}
 					{this.renderGroup("COPY_NUMBER_ALTERATION", "Copy Number")}
+					{this.renderGroup("GENESET_SCORE", "GSVA scores")}
 					{this.renderGroup("MRNA_EXPRESSION", "mRNA Expression")}
 					{this.renderGroup("METHYLATION", "DNA Methylation")}
 					{this.renderGroup("METHYLATION_BINARY", "DNA Methylation")}
@@ -69,6 +70,7 @@ export default class MolecularProfileSelector extends QueryStoreComponent<{}, {}
 				type={type}
 				checked={checked}
 				onChange={event => this.store.selectMolecularProfile(profile, (event.target as HTMLInputElement).checked)}
+				data-test={profile.molecularAlterationType}
 			/>
 			<span className={isGroupToggle ? styles.groupName : styles.profileName}>
 				{label}

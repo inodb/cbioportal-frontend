@@ -6,6 +6,7 @@ import request from 'superagent';
 import exposeComponentRenderer from 'shared/lib/exposeComponentRenderer';
 import TableHeaderControls from "shared/components/tableHeaderControls/TableHeaderControls";
 import LazyMobXTable from "shared/components/lazyMobXTable/LazyMobXTable";
+import {getStudyDownloadListUrl} from "../../shared/api/urls";
 
 
 interface IDataTableRow {
@@ -93,28 +94,9 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
 
     componentDidMount() {
 
-        const DATAHUB_GIT_URL = 'https://api.github.com/repos/cBioPortal/datahub/contents/public';
-
-        request
-            .get(DATAHUB_GIT_URL)
-            .then((data:any) => {
-                if (_.isArray(data.body) && data.body.length > 0) {
-                    _.each(data.body, (fileInfo:{type?: string; name?: string; html_url:string;}) => {
-                        if (_.isObject(fileInfo) && fileInfo.type === 'file' && _.isString(fileInfo.name)) {
-                            const fileName = fileInfo.name.split('.tar.gz');
-                            if (fileName.length > 0) {
-                                this.setState ({
-                                    downloadable: [
-                                        ...this.state.downloadable, fileName[0]
-                                    ]
-                                });
-
-                            }
-                        }
-                    });
-
-                }
-            });
+        request(getStudyDownloadListUrl()).then(
+            (response:any)=> this.setState({downloadable:response.body})
+        );
 
     }
 
@@ -160,7 +142,7 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                     const download = this.state.downloadable.indexOf(data.studyId) > -1;
                                     return (
                                         <a className="dataset-table-download-link" style={download ? {display:'block'} : {display:'none'}}
-                                           href={'https://media.githubusercontent.com/media/cBioPortal/datahub/master/public/' + data.studyId + '.tar.gz'} download>
+                                           href={'http://download.cbioportal.org/' + data.studyId + '.tar.gz'} download>
                                             <i className='fa fa-download'/>
                                         </a>
                                     );
@@ -176,7 +158,19 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                 {name:'All', type: 'all'},
                                 {name:'Sequenced', type: 'sequenced'},
                                 {name:'CNA', type: 'cna'},
-                                {name:'RNA-Seq', type: 'mrnaRnaSeq'},
+                                {
+                                    name:'RNA-Seq',
+                                    type: 'mrnaRnaSeq',
+                                    render: (data:IDataTableRow) => {
+                                        return (
+                                            <span>
+                                                {Number(data.mrnaRnaSeqV2) || Number(data.mrnaRnaSeq) || 0}
+                                            </span>
+                                        );
+                                    },
+                                    sortBy: (data:IDataTableRow) =>
+                                        Number(data.mrnaRnaSeqV2) || Number(data.mrnaRnaSeq) || 0
+                                },
                                 {name:'Tumor mRNA (microarray)', type: 'mrnaMicroarray', visible:false},
                                 {name:'Tumor miRNA', type: 'miRna', visible:false },
                                 {name:'Methylation (HM27)', type: 'methylation', visible:false },
@@ -191,15 +185,7 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                     sortBy: (column.hasOwnProperty('sortBy')) ? column.sortBy : ((data:any)=>(data[column.type])),
                                     render: column.hasOwnProperty('render') ? column.render : (data:any) => {
                                         const style = {};// {textAlign: 'center', width: '100%', display: 'block'}
-                                        if(column.type === 'mrnaRnaSeq') {
-                                            return (
-                                                <span style={style}>
-                                                    {Number(data.mrnaRnaSeqV2) || Number(data.mrnaRnaSeq) || 0}
-                                                </span>
-                                            );
-                                        } else {
-                                            return <span style={{style}}>{data[column.type] || 0}</span>;
-                                        }
+                                        return <span style={{style}}>{data[column.type] || 0}</span>;
                                     },
                                     download: column.hasOwnProperty('download') ? column.download : false,
                                     filter: column.filter || undefined

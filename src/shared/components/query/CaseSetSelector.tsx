@@ -1,15 +1,16 @@
 import * as React from 'react';
-import * as styles_any from './styles.module.scss';
+import * as styles_any from './styles/styles.module.scss';
 import * as _ from 'lodash';
 import ReactSelect from 'react-select';
 import {observer} from "mobx-react";
 import {computed} from 'mobx';
 import {FlexCol, FlexRow} from "../flexbox/FlexBox";
-import {QueryStore, QueryStoreComponent, CUSTOM_CASE_LIST_ID} from "./QueryStore";
-import {getStudyViewUrl} from "../../api/urls";
+import {QueryStore, QueryStoreComponent, CUSTOM_CASE_LIST_ID, ALL_CASES_LIST_ID} from './QueryStore';
+import {getStudySummaryUrl} from '../../api/urls';
 import DefaultTooltip from "../defaultTooltip/DefaultTooltip";
 import SectionHeader from "../sectionHeader/SectionHeader";
 import {ReactSelectOption} from "react-select";
+import { getFilteredCustomCaseSets } from 'shared/components/query/CaseSetSelectorUtils';
 
 const styles = styles_any as {
 	CaseSetSelector: string,
@@ -30,48 +31,55 @@ export default class CaseSetSelector extends QueryStoreComponent<{}, {}>
 {
 	@computed get caseSetOptions() : ReactSelectOptionWithName[]
 	{
-		return [
-			...this.store.sampleLists.result.map(sampleList => {
-				return {
-					label: (
-						<DefaultTooltip
-							placement="right"
-							mouseEnterDelay={0}
-							overlay={<div className={styles.tooltip}>{sampleList.description}</div>}
-						>
-							<span>{`${sampleList.name} (${sampleList.sampleCount})`}</span>
-						</DefaultTooltip>
-					),
-					value: sampleList.sampleListId,
-					textLabel:sampleList.name
-				};
-			}),
-			{
+		let ret = this.store.sampleLists.result.map(sampleList => {
+			return {
 				label: (
 					<DefaultTooltip
 						placement="right"
 						mouseEnterDelay={0}
-						overlay={<div className={styles.tooltip}>Specify your own case list</div>}
+						overlay={<div className={styles.tooltip}>{sampleList.description}</div>}
 					>
-						<span>User-defined Case List</span>
+						<span>{`${sampleList.name} (${sampleList.sampleCount})`}</span>
 					</DefaultTooltip>
 				),
-				value: CUSTOM_CASE_LIST_ID,
-				textLabel:'User-defined Case List'
+				value: sampleList.sampleListId,
+				textLabel:sampleList.name
+			};
+		});
+
+		let filteredcustomCaseSets = getFilteredCustomCaseSets(
+			this.store.isVirtualStudyQuery,
+			this.store.profiledSamplesCount.result);
+
+		let customCaseSets = filteredcustomCaseSets.map(s => {
+			return {
+				value: s.value,
+				label: (
+					<DefaultTooltip
+						placement="right"
+						mouseEnterDelay={0}
+						overlay={<div className={styles.tooltip}>{s.description}</div>}
+					>
+						<span>{s.name}</span>
+					</DefaultTooltip>
+				),
+				textLabel: s.name
 			}
-		];
+		});
+
+		return ret.concat(customCaseSets);
 	}
 
 	render()
 	{
-		if (!this.store.singleSelectedStudyId)
+		if (!this.store.selectableSelectedStudyIds.length)
 			return null;
 		return (
 			<FlexRow padded overflow className={styles.CaseSetSelector} data-test='CaseSetSelector'>
 				<div>
 				<SectionHeader className="sectionLabel"
-							   secondaryComponent={<a href={getStudyViewUrl(this.store.singleSelectedStudyId)}>To build your own case set, try out our enhanced Study View.</a>}
-							   promises={[this.store.sampleLists, this.store.asyncCustomCaseSet]}>
+							   secondaryComponent={<a href={getStudySummaryUrl(this.store.selectableSelectedStudyIds)} target="_blank">To build your own case set, try out our enhanced Study View.</a>}
+							   promises={[this.store.sampleLists, this.store.asyncCustomCaseSet, this.store.profiledSamplesCount]}>
 					Select Patient/Case Set:
 				</SectionHeader>
 				</div>
@@ -100,6 +108,7 @@ export default class CaseSetSelector extends QueryStoreComponent<{}, {}>
 							cols={80}
 							value={this.store.caseIds}
 							onChange={event => this.store.caseIds = event.currentTarget.value}
+							data-test='CustomCaseSetInput'
 						/>
 					</FlexCol>
 				)}

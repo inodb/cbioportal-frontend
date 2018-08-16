@@ -26,10 +26,10 @@ export interface IEvidence {
 
 export interface IOncoKbData {
     indicatorMap: {[id:string]: IndicatorQueryResp} | null;
-    sampleToTumorMap: {[sampleId:string]: string} | null;
+    uniqueSampleKeyToTumorType: {[sampleId:string]: string} | null;
 }
 
 export interface IOncoKbDataWrapper {
     status: "pending" | "error" | "complete";
-    result?: IOncoKbData;
+    result?: IOncoKbData|Error;
 }

@@ -1,0 +1,92 @@
+
+
+.oncoprint__controls {
+
+  display:flex;
+  padding-top:10px; /* this should be margin top but for some reason produces very strange jump affect */
+
+  .rangeslider {
+    margin:0;
+    .rangeslider__labels {
+      display:none;
+    }
+    .rangeslider__handle {
+      height:10px;
+      width:10px;
+      &:after {
+        display:none;
+      }
+    }
+  }
+
+  .checkbox, .radio {
+    &:first-child {
+      margin-top:0px;
+    }
+  }
+
+
+  .dropdown-menu {
+    width:270px;
+    padding:12px !important;
+    > *, button {
+      margin-bottom:10px !important;
+      width:100%;
+    }
+    > :last-child {
+      margin-bottom:0 !important;
+    }
+  }
+
+  .oncoprint__controls__heatmap_menu {
+    textarea {
+      width:100%;
+      min-height:50px;
+      border:1px solid $borderColor;
+    }
+    > *, button {
+      margin-bottom:10px !important;
+      width:100%;
+    }
+    > :last-child {
+      margin-bottom:0 !important;
+    }
+
+  }
+
+  .oncoprint__zoom-controls {
+    display:flex !important;
+    align-items:center;
+
+    > * {
+      margin-right:10px;
+    }
+
+    > :last-child {
+      margin-right:0;
+    }
+
+  }
+
+  .oncoprint__controls__minimap_button {
+    padding: 4px 8px 6px 10px !important;
+  }
+
+  .Select {
+
+    margin-right:10px;
+
+    .Select-control {
+      height:32px;
+    }
+
+    .Select-input {
+      height:32px;
+    }
+
+    .Select-menu-outer {
+      width: 300px;
+    }
+  }
+
+}

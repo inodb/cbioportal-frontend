@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import $ from 'jquery';
 import { default as ReactBootstrap} from 'react-bootstrap';
 import GenomicOverview from './genomicOverview/GenomicOverview';
-import { ClinicalData } from "shared/api/generated/CBioPortalAPI";
+import {CancerStudy, ClinicalData} from "shared/api/generated/CBioPortalAPI";
 import { ClinicalDataBySampleId } from "../../shared/api/api-types-extended";
 import { RequestStatus } from "../../shared/api/api-types-extended";
 import FeatureTitle from '../../shared/components/featureTitle/FeatureTitle';
@@ -13,13 +13,15 @@ import SelectCallback = ReactBootstrap.SelectCallback;
 import {ThreeBounce} from 'better-react-spinkit';
 import PatientHeader from './patientHeader/PatientHeader';
 import {PaginationControls} from "../../shared/components/paginationControls/PaginationControls";
+import {IColumnVisibilityDef} from "shared/components/columnVisibilityControls/ColumnVisibilityControls";
+import {toggleColumnVisibility} from "shared/components/lazyMobXTable/ColumnVisibilityResolver";
 import { PatientViewPageStore } from './clinicalInformation/PatientViewPageStore';
 import ClinicalInformationPatientTable from "./clinicalInformation/ClinicalInformationPatientTable";
 import ClinicalInformationSamples from "./clinicalInformation/ClinicalInformationSamplesTable";
 import {observer, inject } from "mobx-react";
 import {getSpanElementsFromCleanData} from './clinicalInformation/lib/clinicalAttributesUtil.js';
 import CopyNumberTableWrapper from "./copyNumberAlterations/CopyNumberTableWrapper";
-import {reaction, computed, autorun, IReactionDisposer} from "mobx";
+import {reaction, computed, autorun, IReactionDisposer, observable, action} from "mobx";
 import Timeline from "./timeline/Timeline";
 import {default as PatientViewMutationTable} from "./mutation/PatientViewMutationTable";
 import PathologyReport from "./pathologyReport/PathologyReport";
@@ -33,10 +35,13 @@ import { getMouseIcon } from './SVGIcons';
 
 import './patient.scss';
 import IFrameLoader from "../../shared/components/iframeLoader/IFrameLoader";
+import {getSampleViewUrl} from "../../shared/api/urls";
 
 const patientViewPageStore = new PatientViewPageStore();
 
-(window as any).patientViewPageStore = patientViewPageStore;
+const win:any = (window as any);
+
+win.patientViewPageStore = patientViewPageStore;
 
 export interface IPatientViewPageProps {
     routing: any;
@@ -53,7 +58,11 @@ export interface IPatientViewPageProps {
 @observer
 export default class PatientViewPage extends React.Component<IPatientViewPageProps, {}> {
 
+    @observable private mutationTableColumnVisibility: {[columnId: string]: boolean}|undefined;
+    @observable private cnaTableColumnVisibility: {[columnId: string]: boolean}|undefined;
+
     private updatePageTitleReaction: IReactionDisposer;
+    private updateMetaReaction: IReactionDisposer;
 
     constructor(props: IPatientViewPageProps) {
 
@@ -61,8 +70,8 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
 
         //TODO: this should be done by a module so that it can be reused on other pages
         const reaction1 = reaction(
-            () => props.routing.location.query,
-            query => {
+            () => [props.routing.location.query, props.routing.location.hash],
+            ([query,hash]) => {
 
                 const validationResult = validateParametersPatientView(query);
 
@@ -79,7 +88,15 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                     {
                         patientViewPageStore.setSampleId(query.sampleId as string);
                     }
-                    patientViewPageStore.patientIdsInCohort = ('navCaseIds' in query ? (query.navCaseIds as string).split(",") : []);
+
+                    // if there is a navCaseId list in url
+                    const navCaseIdMatch = hash.match(/navCaseIds=([^&]*)/);
+                    if (navCaseIdMatch && navCaseIdMatch.length > 1) {
+                        const navCaseIds = navCaseIdMatch[1].split(',');
+                        patientViewPageStore.patientIdsInCohort = navCaseIds.map((entityId:string)=>{
+                            return entityId.includes(':') ? entityId : patientViewPageStore.studyId + ':' + entityId;
+                        });
+                    }
 
                 } else {
                     patientViewPageStore.urlValidationError = validationResult.message;
@@ -91,35 +108,36 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
 
         this.updatePageTitleReaction = reaction(
             () => patientViewPageStore.pageTitle,
-            (title:string) => ((window as any).document.title = title),
+            (title:string) => {
+                win.document.title = title;
+            },
             { fireImmediately:true }
-        )
+        );
 
-    }
+        this.updateMetaReaction = autorun(
+            () => {
+                const study = patientViewPageStore.studyMetaData.result;
+                if (study) {
+                    // first kill any existing meta tag
+                    $("meta[name=description]").remove();
+                    const id = ((patientViewPageStore.pageMode === "patient") ?
+                        patientViewPageStore.patientId : patientViewPageStore.sampleId);
+                    const content =
+                        `${id} from ${study.name}`;
+                    const meta = $(`<meta name="description" content="${content}">`).prependTo("head");
+                }
+            }
+        );
 
-    public componentDidMount() {
 
-        this.exposeComponentRenderersToParentScript();
-
+        this.onMutationTableColumnVisibilityToggled = this.onMutationTableColumnVisibilityToggled.bind(this);
+        this.onCnaTableColumnVisibilityToggled = this.onCnaTableColumnVisibilityToggled.bind(this);
     }
 
     public componentWillUnmount(){
-
         //dispose reaction
         this.updatePageTitleReaction();
-
-    }
-
-    // this gives the parent (legacy) cbioportal code control to mount
-    // these components whenever and wherever it wants
-    exposeComponentRenderersToParentScript() {
-
-        // exposeComponentRenderer('renderClinicalInformationContainer', ClinicalInformationContainer,
-        //     { store:this.props.store }
-        // );
-        //
-        // exposeComponentRenderer('renderGenomicOverview', GenomicOverview);
-
+        this.updateMetaReaction();
     }
 
     public handleSampleClick(id: string, e: React.MouseEvent<HTMLAnchorElement>) {
@@ -139,7 +157,12 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
 
     private handlePatientClick(id: string) {
 
-        this.props.routing.updateRoute({ caseId: id, sampleId: undefined });
+        let values = id.split(":");
+        if(values.length == 2){
+            this.props.routing.updateRoute({ studyId: values[0], caseId: values[1], sampleId: undefined });
+        } else {
+            this.props.routing.updateRoute({ caseId: id, sampleId: undefined });
+        }
 
     }
 
@@ -155,6 +178,22 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
         } else {
             return "loading";
         }
+    }
+
+    @action private onCnaTableColumnVisibilityToggled(columnId: string, columnVisibility?: IColumnVisibilityDef[])
+    {
+        this.cnaTableColumnVisibility = toggleColumnVisibility(
+            this.cnaTableColumnVisibility, columnId, columnVisibility);
+    }
+
+    @action private onMutationTableColumnVisibilityToggled(columnId: string, columnVisibility?: IColumnVisibilityDef[])
+    {
+        this.mutationTableColumnVisibility = toggleColumnVisibility(
+            this.mutationTableColumnVisibility, columnId, columnVisibility);
+    }
+
+    private shouldShowPathologyReport(patientViewPageStore: PatientViewPageStore): boolean {
+        return patientViewPageStore.pathologyReport.isComplete && patientViewPageStore.pathologyReport.result.length > 0;
     }
 
     public render() {
@@ -197,7 +236,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                         {isPDX && getMouseIcon()}
                                         {isPDX && '\u00A0'}
                                         <a
-                                            href={`case.do?#/patient?sampleId=${sample.id}&studyId=${patientViewPageStore.studyMetaData.result!.studyId}`}
+                                            href={getSampleViewUrl(patientViewPageStore.studyMetaData.result!.studyId, sample.id)}
                                             target="_blank"
                                             onClick={(e: React.MouseEvent<HTMLAnchorElement>) => this.handleSampleClick(sample.id, e)}
                                         >
@@ -205,7 +244,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                         </a>
                                         {sampleManager &&
                                          sampleManager.clinicalDataLegacyCleanAndDerived[sample.id] &&
-                                         getSpanElementsFromCleanData(sampleManager.clinicalDataLegacyCleanAndDerived[sample.id], 'lgg_ucsf_2014')}
+                                         getSpanElementsFromCleanData(sampleManager.clinicalDataLegacyCleanAndDerived[sample.id], patientViewPageStore.studyId)}
                                     </span>
                                 )
                             }
@@ -222,7 +261,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
         }
 
         if (patientViewPageStore.patientIdsInCohort && patientViewPageStore.patientIdsInCohort.length > 0) {
-            const indexInCohort = patientViewPageStore.patientIdsInCohort.indexOf(patientViewPageStore.patientId);
+            const indexInCohort = patientViewPageStore.patientIdsInCohort.indexOf(patientViewPageStore.studyId + ':' + patientViewPageStore.patientId);
             cohortNav = (
                 <PaginationControls
                     currentPage={indexInCohort + 1}
@@ -272,6 +311,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                 <td><PatientHeader
                                     handlePatientClick={(id: string)=>this.handlePatientClick(id)}
                                     patient={patientViewPageStore.patientViewData.result.patient}
+                                    studyId={patientViewPageStore.studyId}
                                     darwinUrl={patientViewPageStore.darwinUrl.result}
                                     sampleManager={sampleManager}/></td>
                             </tr>
@@ -339,7 +379,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                     <PatientViewMutationTable
                                         sampleManager={sampleManager}
                                         sampleIds={sampleManager ? sampleManager.getSampleIdsInOrder() : []}
-                                        sampleIdToTumorType={patientViewPageStore.sampleIdToTumorType}
+                                        uniqueSampleKeyToTumorType={patientViewPageStore.uniqueSampleKeyToTumorType}
                                         molecularProfileIdToMolecularProfile={patientViewPageStore.molecularProfileIdToMolecularProfile.result}
                                         variantCountCache={patientViewPageStore.variantCountCache}
                                         genomeNexusEnrichmentCache={patientViewPageStore.genomeNexusEnrichmentCache}
@@ -350,9 +390,10 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                         mrnaExprRankMolecularProfileId={patientViewPageStore.mrnaRankMolecularProfileId.result || undefined}
                                         discreteCNAMolecularProfileId={patientViewPageStore.molecularProfileIdDiscrete.result}
                                         data={patientViewPageStore.mergedMutationDataIncludingUncalled}
+                                        downloadDataFetcher={patientViewPageStore.downloadDataFetcher}
                                         mutSigData={patientViewPageStore.mutSigData.result}
                                         myCancerGenomeData={patientViewPageStore.myCancerGenomeData}
-                                        hotspots={patientViewPageStore.indexedHotspotData}
+                                        hotspotData={patientViewPageStore.indexedHotspotData}
                                         cosmicData={patientViewPageStore.cosmicData.result}
                                         oncoKbData={patientViewPageStore.oncoKbData}
                                         oncoKbAnnotatedGenes={patientViewPageStore.oncoKbAnnotatedGenes.result}
@@ -364,6 +405,10 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                         enableHotspot={AppConfig.showHotspot}
                                         enableMyCancerGenome={AppConfig.showMyCancerGenome}
                                         enableCivic={AppConfig.showCivic}
+                                        columnVisibility={this.mutationTableColumnVisibility}
+                                        columnVisibilityProps={{
+                                            onColumnToggled: this.onMutationTableColumnVisibilityToggled
+                                        }}
                                     />
                                 )
                             }
@@ -390,6 +435,10 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
                                 gisticData={patientViewPageStore.gisticData.result}
                                 mrnaExprRankMolecularProfileId={patientViewPageStore.mrnaRankMolecularProfileId.result || undefined}
                                 status={this.cnaTableStatus}
+                                columnVisibility={this.cnaTableColumnVisibility}
+                                columnVisibilityProps={{
+                                    onColumnToggled: this.onCnaTableColumnVisibilityToggled
+                                }}
                             />
                         </MSKTab>
 
@@ -425,7 +474,7 @@ export default class PatientViewPage extends React.Component<IPatientViewPagePro
 
 
                     <MSKTab key={3} id="pathologyReportTab" linkText="Pathology Report"
-                            hide={(patientViewPageStore.pathologyReport.isComplete && patientViewPageStore.pathologyReport.result.length === 0)}
+                            hide={!this.shouldShowPathologyReport(patientViewPageStore)}
                             loading={patientViewPageStore.pathologyReport.isPending}
                     >
                         <div>

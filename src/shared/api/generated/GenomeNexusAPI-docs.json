@@ -12,11 +12,14 @@
       "url": "https://github.com/cBioPortal/genome-nexus/blob/master/LICENSE"
     }
   },
-  "basePath": "/",
   "tags": [
     {
-      "name": "cross-reference-controller",
-      "description": "Cross Reference Controller"
+      "name": "info-controller",
+      "description": "Info Controller"
+    },
+    {
+      "name": "pdb-controller",
+      "description": "PDB Controller"
     },
     {
       "name": "annotation-controller",
@@ -25,6 +28,10 @@
     {
       "name": "pfam-controller",
       "description": "PFAM Controller"
+    },
+    {
+      "name": "ensembl-controller",
+      "description": "Ensembl Controller"
     }
   ],
   "schemes": [
@@ -49,7 +56,7 @@
           {
             "in": "body",
             "name": "variants",
-            "description": "List of variants. For example [\"X:g.66937331T>A\",\"17:g.41242962->GA\"]",
+            "description": "List of variants. For example [\"X:g.66937331T>A\",\"17:g.41242962_41242963insGA\"]",
             "required": true,
             "schema": {
               "type": "array",
@@ -91,13 +98,13 @@
         }
       }
     },
-    "/annotation/{variant}": {
-      "get": {
+    "/annotation/genomic": {
+      "post": {
         "tags": [
           "annotation-controller"
         ],
-        "summary": "Retrieves VEP annotation for the provided variant",
-        "operationId": "fetchVariantAnnotationGET",
+        "summary": "Retrieves VEP annotation for the provided list of genomic locations",
+        "operationId": "fetchVariantAnnotationByGenomicLocationPOST",
         "consumes": [
           "application/json"
         ],
@@ -106,9 +113,68 @@
         ],
         "parameters": [
           {
-            "name": "variant",
+            "in": "body",
+            "name": "genomicLocations",
+            "description": "List of Genomic Locations",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GenomicLocation"
+              }
+            }
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma separated list of fields to include (case-sensitive!). For example: hotspots,mutation_assessor",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi",
+            "default": "hotspots,mutation_assessor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/VariantAnnotation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/annotation/genomic/{genomicLocation}": {
+      "get": {
+        "tags": [
+          "annotation-controller"
+        ],
+        "summary": "Retrieves VEP annotation for the provided genomic location",
+        "operationId": "fetchVariantAnnotationByGenomicLocationGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "genomicLocation",
             "in": "path",
-            "description": "Variant. For example 17:g.41242962->GA",
+            "description": "A genomic location. For example 7,140453136,140453136,A,T",
             "required": true,
             "type": "string"
           },
@@ -142,39 +208,64 @@
         }
       }
     },
-    "/pfam/domain": {
+    "/annotation/{variant}": {
       "get": {
         "tags": [
-          "pfam-controller"
+          "annotation-controller"
         ],
-        "summary": "Retrieves all PFAM domains",
-        "operationId": "fetchAllPfamDomainsGET",
+        "summary": "Retrieves VEP annotation for the provided variant",
+        "operationId": "fetchVariantAnnotationGET",
         "consumes": [
           "application/json"
         ],
         "produces": [
           "application/json"
         ],
+        "parameters": [
+          {
+            "name": "variant",
+            "in": "path",
+            "description": "Variant. For example 17:g.41242962_41242963insGA",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma separated list of fields to include (case-sensitive!). For example: hotspots,mutation_assessor",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi",
+            "default": "hotspots,mutation_assessor"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
+              "$ref": "#/definitions/VariantAnnotation"
             }
           }
         }
       }
     },
-    "/pfam/domain/gene": {
+    "/ensembl/canonical-gene/entrez": {
       "post": {
         "tags": [
-          "pfam-controller"
+          "ensembl-controller"
         ],
-        "summary": "Retrieves PFAM domains by Ensembl gene IDs",
-        "operationId": "fetchPfamDomainsByGeneIdsPOST",
+        "summary": "Retrieves canonical Ensembl Gene ID by Entrez Gene Ids",
+        "operationId": "fetchCanonicalEnsemblGeneIdByEntrezGeneIdsPOST",
         "consumes": [
           "application/json"
         ],
@@ -184,8 +275,8 @@
         "parameters": [
           {
             "in": "body",
-            "name": "geneIds",
-            "description": "List of Ensembl gene IDs. For example [\"ENSG00000136999\",\"ENSG00000272398\",\"ENSG00000198695\"]",
+            "name": "entrezGeneIds",
+            "description": "List of Entrez Gene Ids. For example [\"23140\",\"26009\",\"100131879\"]",
             "required": true,
             "schema": {
               "type": "array",
@@ -201,20 +292,212 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/PfamDomain"
+                "$ref": "#/definitions/EnsemblGene"
               }
             }
           }
         }
       }
     },
-    "/pfam/domain/gene/{geneId}": {
+    "/ensembl/canonical-gene/entrez/{entrezGeneId}": {
       "get": {
         "tags": [
-          "pfam-controller"
+          "ensembl-controller"
         ],
-        "summary": "Retrieves PFAM domains by an Ensembl gene ID",
-        "operationId": "fetchPfamDomainsByGeneIdGET",
+        "summary": "Retrieves Ensembl canonical gene id by Entrez Gene Id",
+        "operationId": "fetchCanonicalEnsemblGeneIdByEntrezGeneIdGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "entrezGeneId",
+            "in": "path",
+            "description": "An Entrez Gene Id. For example 23140",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnsemblGene"
+            }
+          }
+        }
+      }
+    },
+    "/ensembl/canonical-gene/hgnc": {
+      "post": {
+        "tags": [
+          "ensembl-controller"
+        ],
+        "summary": "Retrieves canonical Ensembl Gene ID by Hugo Symbols",
+        "operationId": "fetchCanonicalEnsemblGeneIdByHugoSymbolsPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "hugoSymbols",
+            "description": "List of Hugo Symbols. For example [\"TP53\",\"PIK3CA\",\"BRCA1\"]",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/EnsemblGene"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ensembl/canonical-gene/hgnc/{hugoSymbol}": {
+      "get": {
+        "tags": [
+          "ensembl-controller"
+        ],
+        "summary": "Retrieves Ensembl canonical gene id by Hugo Symbol",
+        "operationId": "fetchCanonicalEnsemblGeneIdByHugoSymbolGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "hugoSymbol",
+            "in": "path",
+            "description": "A Hugo Symbol. For example TP53",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnsemblGene"
+            }
+          }
+        }
+      }
+    },
+    "/ensembl/canonical-transcript/hgnc": {
+      "post": {
+        "tags": [
+          "ensembl-controller"
+        ],
+        "summary": "Retrieves Ensembl canonical transcripts by Hugo Symbols",
+        "operationId": "fetchCanonicalEnsemblTranscriptsByHugoSymbolsPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "hugoSymbols",
+            "description": "List of Hugo Symbols. For example [\"TP53\",\"PIK3CA\",\"BRCA1\"]",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string",
+            "default": "uniprot"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/EnsemblTranscript"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ensembl/canonical-transcript/hgnc/{hugoSymbol}": {
+      "get": {
+        "tags": [
+          "ensembl-controller"
+        ],
+        "summary": "Retrieves Ensembl canonical transcript by Hugo Symbol",
+        "operationId": "fetchCanonicalEnsemblTranscriptByHugoSymbolGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "hugoSymbol",
+            "in": "path",
+            "description": "A Hugo Symbol. For example TP53",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string",
+            "default": "uniprot"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnsemblTranscript"
+            }
+          }
+        }
+      }
+    },
+    "/ensembl/transcript": {
+      "get": {
+        "tags": [
+          "ensembl-controller"
+        ],
+        "summary": "Retrieves Ensembl Transcripts by protein ID, and gene ID. Retrieves all transcripts in case no query parameter provided",
+        "operationId": "fetchEnsemblTranscriptsGET",
         "consumes": [
           "application/json"
         ],
@@ -224,159 +507,23 @@
         "parameters": [
           {
             "name": "geneId",
-            "in": "path",
+            "in": "query",
             "description": "An Ensembl gene ID. For example ENSG00000136999",
-            "required": true,
+            "required": false,
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pfam/domain/id": {
-      "post": {
-        "tags": [
-          "pfam-controller"
-        ],
-        "summary": "Retrieves PFAM domains by PFAM domain IDs",
-        "operationId": "fetchPfamDomainsByPfamIdsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "pfamDomainIds",
-            "description": "List of PFAM domain IDs. For example [\"PF02827\",\"PF00093\",\"PF15276\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pfam/domain/id/{pfamDomainId}": {
-      "get": {
-        "tags": [
-          "pfam-controller"
-        ],
-        "summary": "Retrieves PFAM domains by a PFAM domain ID",
-        "operationId": "fetchPfamDomainsByPfamIdGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "pfamDomainId",
-            "in": "path",
-            "description": "A PFAM domain ID. For example PF02827",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pfam/domain/protein": {
-      "post": {
-        "tags": [
-          "pfam-controller"
-        ],
-        "summary": "Retrieves PFAM domains by Ensembl protein IDs",
-        "operationId": "fetchPfamDomainsByProteinIdsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "proteinIds",
-            "description": "List of Ensembl protein IDs. For example [\"ENSP00000439985\",\"ENSP00000478460\",\"ENSP00000346196\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pfam/domain/protein/{proteinId}": {
-      "get": {
-        "tags": [
-          "pfam-controller"
-        ],
-        "summary": "Retrieves PFAM domains by an Ensembl protein ID",
-        "operationId": "fetchPfamDomainsByProteinIdGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
+          },
           {
             "name": "proteinId",
-            "in": "path",
+            "in": "query",
             "description": "An Ensembl protein ID. For example ENSP00000439985",
-            "required": true,
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "hugoSymbol",
+            "in": "query",
+            "description": "A Hugo Symbol For example ARF5",
+            "required": false,
             "type": "string"
           }
         ],
@@ -386,20 +533,18 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/PfamDomain"
+                "$ref": "#/definitions/EnsemblTranscript"
               }
             }
           }
         }
-      }
-    },
-    "/pfam/domain/transcript": {
+      },
       "post": {
         "tags": [
-          "pfam-controller"
+          "ensembl-controller"
         ],
-        "summary": "Retrieves PFAM domains by Ensembl transcript IDs",
-        "operationId": "fetchPfamDomainsByTranscriptIdsPOST",
+        "summary": "Retrieves Ensembl Transcripts by Ensembl transcript IDs, hugo Symbols, protein IDs, or gene IDs",
+        "operationId": "fetchEnsemblTranscriptsByEnsemblFilterPOST",
         "consumes": [
           "application/json"
         ],
@@ -409,14 +554,11 @@
         "parameters": [
           {
             "in": "body",
-            "name": "transcriptIds",
-            "description": "List of Ensembl transcript IDs. For example [\"ENST00000361390\",\"ENST00000361453\",\"ENST00000361624\"]",
+            "name": "ensemblFilter",
+            "description": "List of Ensembl transcript IDs. For example [\"ENST00000361390\", \"ENST00000361453\", \"ENST00000361624\"]<br>OR<br>List of Hugo Symbols. For example [\"TP53\", \"PIK3CA\", \"BRCA1\"]<br>OR<br>List of Ensembl protein IDs. For example [\"ENSP00000439985\", \"ENSP00000478460\", \"ENSP00000346196\"]<br>OR<br>List of Ensembl gene IDs. For example [\"ENSG00000136999\", \"ENSG00000272398\", \"ENSG00000198695\"]",
             "required": true,
             "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "$ref": "#/definitions/EnsemblFilter"
             }
           }
         ],
@@ -426,20 +568,20 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/PfamDomain"
+                "$ref": "#/definitions/EnsemblTranscript"
               }
             }
           }
         }
       }
     },
-    "/pfam/domain/transcript/{transcriptId}": {
+    "/ensembl/transcript/{transcriptId}": {
       "get": {
         "tags": [
-          "pfam-controller"
+          "ensembl-controller"
         ],
-        "summary": "Retrieves PFAM domains by an Ensembl transcript ID",
-        "operationId": "fetchPfamDomainsByTranscriptIdGET",
+        "summary": "Retrieves the transcript by an Ensembl transcript ID",
+        "operationId": "fetchEnsemblTranscriptByTranscriptIdGET",
         "consumes": [
           "application/json"
         ],
@@ -459,22 +601,19 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PfamDomain"
-              }
+              "$ref": "#/definitions/EnsemblTranscript"
             }
           }
         }
       }
     },
-    "/xrefs/{accession}": {
+    "/ensembl/xrefs": {
       "get": {
         "tags": [
-          "cross-reference-controller"
+          "ensembl-controller"
         ],
-        "summary": "Perform lookups of Ensembl identifiers and retrieve their external referenes in other databases",
-        "operationId": "getGeneXrefs",
+        "summary": "Perform lookups of Ensembl identifiers and retrieve their external references in other databases",
+        "operationId": "fetchGeneXrefsGET",
         "consumes": [
           "application/json"
         ],
@@ -484,7 +623,7 @@
         "parameters": [
           {
             "name": "accession",
-            "in": "path",
+            "in": "query",
             "description": "Ensembl gene accession. For example ENSG00000169083",
             "required": true,
             "type": "string"
@@ -502,9 +641,378 @@
           }
         }
       }
+    },
+    "/pdb/header": {
+      "post": {
+        "tags": [
+          "pdb-controller"
+        ],
+        "summary": "Retrieves PDB header info by a PDB id",
+        "operationId": "fetchPdbHeaderPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "pdbIds",
+            "description": "List of pdb ids, for example [\"1a37\",\"1a4o\"]",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PdbHeader"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pdb/header/{pdbId}": {
+      "get": {
+        "tags": [
+          "pdb-controller"
+        ],
+        "summary": "Retrieves PDB header info by a PDB id",
+        "operationId": "fetchPdbHeaderGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "pdbId",
+            "in": "path",
+            "description": "PDB id, for example 1a37",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/PdbHeader"
+            }
+          }
+        }
+      }
+    },
+    "/pfam/domain": {
+      "post": {
+        "tags": [
+          "pfam-controller"
+        ],
+        "summary": "Retrieves PFAM domains by PFAM domain accession IDs",
+        "operationId": "fetchPfamDomainsByPfamAccessionPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "pfamAccessions",
+            "description": "List of PFAM domain accession IDs. For example [\"PF02827\",\"PF00093\",\"PF15276\"]",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PfamDomain"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pfam/domain/{pfamAccession}": {
+      "get": {
+        "tags": [
+          "pfam-controller"
+        ],
+        "summary": "Retrieves a PFAM domain by a PFAM domain ID",
+        "operationId": "fetchPfamDomainsByAccessionGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "pfamAccession",
+            "in": "path",
+            "description": "A PFAM domain accession ID. For example PF02827",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/PfamDomain"
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": [
+          "info-controller"
+        ],
+        "summary": "Retrieve Genome Nexus Version",
+        "operationId": "fetchVersionGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Version"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
+    "ColocatedVariant": {
+      "type": "object",
+      "required": [
+        "gnomad_afr_allele",
+        "gnomad_afr_maf",
+        "gnomad_eas_allele",
+        "gnomad_eas_maf",
+        "gnomad_nfe_allele",
+        "gnomad_nfe_maf"
+      ],
+      "properties": {
+        "gnomad_nfe_allele": {
+          "type": "string",
+          "description": "GnomAD Non-Finnish European Allele"
+        },
+        "gnomad_nfe_maf": {
+          "type": "string",
+          "description": "GnomAD Non-Finnish European MAF"
+        },
+        "gnomad_afr_allele": {
+          "type": "string",
+          "description": "GnomAD African/African American Allele"
+        },
+        "gnomad_afr_maf": {
+          "type": "string",
+          "description": "GnomAD African/African American MAF"
+        },
+        "gnomad_eas_allele": {
+          "type": "string",
+          "description": "GnomAD East Asian Allele"
+        },
+        "gnomad_eas_maf": {
+          "type": "string",
+          "description": "GnomAD East Asian MAF"
+        }
+      }
+    },
+    "EnsemblFilter": {
+      "type": "object",
+      "properties": {
+        "geneIds": {
+          "type": "array",
+          "description": "List of Ensembl gene IDs. For example [\"ENSG00000136999\", \"ENSG00000272398\", \"ENSG00000198695\"]",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hugoSymbols": {
+          "type": "array",
+          "description": "List of Hugo Symbols. For example [\"TP53\", \"PIK3CA\", \"BRCA1\"]",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proteinIds": {
+          "type": "array",
+          "description": "List of Ensembl protein IDs. For example [\"ENSP00000439985\", \"ENSP00000478460\", \"ENSP00000346196\"]",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transcriptIds": {
+          "type": "array",
+          "description": "List of Ensembl transcript IDs. For example [\"ENST00000361390\", \"ENST00000361453\", \"ENST00000361624\"]",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "EnsemblGene": {
+      "type": "object",
+      "required": [
+        "geneId",
+        "hugoSymbol"
+      ],
+      "properties": {
+        "geneId": {
+          "type": "string",
+          "description": "Ensembl gene id"
+        },
+        "hugoSymbol": {
+          "type": "string",
+          "description": "Approved Hugo symbol"
+        },
+        "synonyms": {
+          "type": "array",
+          "description": "Hugo symbol synonyms",
+          "items": {
+            "type": "string"
+          }
+        },
+        "previousSymbols": {
+          "type": "array",
+          "description": "Previous Hugo symbols",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entrezGeneId": {
+          "type": "string",
+          "description": "Entrez Gene Id"
+        }
+      }
+    },
+    "EnsemblTranscript": {
+      "type": "object",
+      "required": [
+        "geneId",
+        "proteinId",
+        "transcriptId"
+      ],
+      "properties": {
+        "transcriptId": {
+          "type": "string",
+          "description": "Ensembl transcript id"
+        },
+        "geneId": {
+          "type": "string",
+          "description": "Ensembl gene id"
+        },
+        "proteinId": {
+          "type": "string",
+          "description": "Ensembl protein id"
+        },
+        "proteinLength": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Length of protein"
+        },
+        "pfamDomains": {
+          "type": "array",
+          "description": "Pfam domains",
+          "items": {
+            "$ref": "#/definitions/PfamDomainRange"
+          }
+        },
+        "hugoSymbols": {
+          "type": "array",
+          "description": "Hugo symbols",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exons": {
+          "type": "array",
+          "description": "Exon information",
+          "items": {
+            "$ref": "#/definitions/Exon"
+          }
+        },
+        "utrs": {
+          "type": "array",
+          "description": "UTR information",
+          "items": {
+            "$ref": "#/definitions/UntranslatedRegion"
+          }
+        }
+      }
+    },
+    "Exon": {
+      "type": "object",
+      "required": [
+        "exonEnd",
+        "exonId",
+        "exonStart",
+        "rank",
+        "strand",
+        "version"
+      ],
+      "properties": {
+        "exonId": {
+          "type": "string",
+          "description": "Exon id"
+        },
+        "exonStart": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Start position of exon"
+        },
+        "exonEnd": {
+          "type": "integer",
+          "format": "int32",
+          "description": "End position of exon"
+        },
+        "rank": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of exon in transcript"
+        },
+        "strand": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Strand exon is on, -1 for - and 1 for +"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Exon version"
+        }
+      }
+    },
     "GeneXref": {
       "type": "object",
       "required": [
@@ -532,6 +1040,9 @@
           "type": "string",
           "description": "Display id"
         },
+        "ensemblGeneId": {
+          "type": "string"
+        },
         "info_text": {
           "type": "string",
           "description": "Database info text"
@@ -557,50 +1068,300 @@
         }
       }
     },
-    "PfamDomain": {
+    "GenomicLocation": {
       "type": "object",
       "required": [
-        "geneId",
-        "proteinId",
-        "transcriptId"
+        "chromosome",
+        "end",
+        "referenceAllele",
+        "start",
+        "variantAllele"
       ],
       "properties": {
-        "geneId": {
+        "chromosome": {
           "type": "string",
-          "description": "Ensembl gene id"
+          "description": "Chromosome"
         },
-        "geneSymbol": {
+        "start": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Start Position"
+        },
+        "end": {
+          "type": "integer",
+          "format": "int32",
+          "description": "End Position"
+        },
+        "referenceAllele": {
+          "type": "string",
+          "description": "Reference Allele"
+        },
+        "variantAllele": {
+          "type": "string",
+          "description": "Variant Allele"
+        }
+      }
+    },
+    "Hotspot": {
+      "type": "object",
+      "properties": {
+        "hugoSymbol": {
           "type": "string",
           "description": "Hugo gene symbol"
         },
-        "pfamDomainDescription": {
-          "type": "string",
-          "description": "PFAM domain description"
+        "inframeCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Inframe mutation count"
         },
-        "pfamDomainEnd": {
+        "missenseCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Missense mutation count"
+        },
+        "residue": {
+          "type": "string",
+          "description": "Hotspot residue"
+        },
+        "spliceCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Splice mutation count"
+        },
+        "truncatingCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Truncation mutation count"
+        },
+        "tumorCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Tumor count"
+        },
+        "type": {
+          "type": "string",
+          "description": "Hotspot type"
+        }
+      }
+    },
+    "HotspotAnnotation": {
+      "type": "object",
+      "properties": {
+        "annotation": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Hotspot"
+            }
+          }
+        },
+        "license": {
+          "type": "string"
+        }
+      }
+    },
+    "IntegerRange": {
+      "type": "object",
+      "properties": {
+        "end": {
           "type": "integer",
           "format": "int32"
         },
-        "pfamDomainId": {
+        "start": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "MutationAssessor": {
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "codonStartPosition": {
           "type": "string",
-          "description": "PFAM domain id"
+          "description": "Codon start position"
         },
-        "pfamDomainName": {
+        "cosmicCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of mutations in COSMIC for this protein"
+        },
+        "functionalImpact": {
+          "type": "string",
+          "description": "Functional impact"
+        },
+        "functionalImpactScore": {
+          "type": "number",
+          "format": "double",
+          "description": "Functional impact score"
+        },
+        "hgvs": {
+          "type": "string"
+        },
+        "hugoSymbol": {
+          "type": "string",
+          "description": "Hugo gene symbol"
+        },
+        "input": {
+          "type": "string",
+          "description": "User-input variants"
+        },
+        "mappingIssue": {
+          "type": "string",
+          "description": "Mapping issue info"
+        },
+        "msaGaps": {
+          "type": "number",
+          "format": "double",
+          "description": "Portion of gaps in variant position in multiple sequence alignment"
+        },
+        "msaHeight": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of diverse sequences in multiple sequence alignment (identical or highly similar sequences filtered out)"
+        },
+        "msaLink": {
+          "type": "string",
+          "description": "Link to multiple sequence alignment"
+        },
+        "pdbLink": {
+          "type": "string",
+          "description": "Link to 3d structure browser"
+        },
+        "referenceGenomeVariant": {
+          "type": "string",
+          "description": "Reference genome variant"
+        },
+        "referenceGenomeVariantType": {
+          "type": "string",
+          "description": "Reference genome variant type"
+        },
+        "refseqId": {
+          "type": "string",
+          "description": "Refseq protein ID"
+        },
+        "refseqPosition": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Variant position in Refseq protein, can be different from the one in Uniprot"
+        },
+        "refseqResidue": {
+          "type": "string",
+          "description": "Reference residue in Refseq protein, can be different from the one in Uniprot"
+        },
+        "snpCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of SNPs in dbSNP for this protein"
+        },
+        "uniprotId": {
+          "type": "string",
+          "description": "Uniprot protein accession ID"
+        },
+        "uniprotPosition": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Variant position in Uniprot protein, can be different from the one in Refseq"
+        },
+        "uniprotResidue": {
+          "type": "string",
+          "description": "Reference residue in Uniprot protein, can be different from the one in Refseq"
+        },
+        "variant": {
+          "type": "string",
+          "description": "Amino acid substitution"
+        },
+        "variantConservationScore": {
+          "type": "number",
+          "format": "double",
+          "description": "Variant conservation score"
+        },
+        "variantSpecificityScore": {
+          "type": "number",
+          "format": "double",
+          "description": "Variant specificity score"
+        }
+      }
+    },
+    "MutationAssessorAnnotation": {
+      "type": "object",
+      "properties": {
+        "annotation": {
+          "$ref": "#/definitions/MutationAssessor"
+        },
+        "license": {
+          "type": "string"
+        }
+      }
+    },
+    "PdbHeader": {
+      "type": "object",
+      "required": [
+        "pdbId",
+        "title"
+      ],
+      "properties": {
+        "compound": {
+          "type": "object"
+        },
+        "pdbId": {
+          "type": "string",
+          "description": "PDB id"
+        },
+        "source": {
+          "type": "object"
+        },
+        "title": {
+          "type": "string",
+          "description": "PDB description"
+        }
+      }
+    },
+    "PfamDomain": {
+      "type": "object",
+      "required": [
+        "name",
+        "pfamAccession"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "PFAM domain description"
+        },
+        "name": {
           "type": "string",
           "description": "PFAM domain name"
+        },
+        "pfamAccession": {
+          "type": "string",
+          "description": "PFAM domain accession"
+        }
+      }
+    },
+    "PfamDomainRange": {
+      "type": "object",
+      "required": [
+        "pfamDomainEnd",
+        "pfamDomainId",
+        "pfamDomainStart"
+      ],
+      "properties": {
+        "pfamDomainId": {
+          "type": "string",
+          "description": "Pfam domain id"
         },
         "pfamDomainStart": {
           "type": "integer",
           "format": "int32",
-          "description": "PFAM domain start"
+          "description": "Pfam domain start amino acid"
         },
-        "proteinId": {
-          "type": "string",
-          "description": "Ensembl translation id"
-        },
-        "transcriptId": {
-          "type": "string",
-          "description": "Ensembl transcript id"
+        "pfamDomainEnd": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Pfam domain end amino acid"
         }
       }
     },
@@ -638,7 +1399,8 @@
           "description": "Hugo gene symbol"
         },
         "hgnc_id": {
-          "type": "string",
+          "type": "integer",
+          "format": "int32",
           "description": "HGNC id"
         },
         "hgvsc": {
@@ -654,11 +1416,13 @@
           "description": "Polyphen Prediction"
         },
         "polyphen_score": {
-          "type": "string",
+          "type": "number",
+          "format": "double",
           "description": "Polyphen Score"
         },
         "protein_end": {
-          "type": "string",
+          "type": "integer",
+          "format": "int32",
           "description": "Protein end position"
         },
         "protein_id": {
@@ -666,7 +1430,8 @@
           "description": "Ensembl protein id"
         },
         "protein_start": {
-          "type": "string",
+          "type": "integer",
+          "format": "int32",
           "description": "Protein start position"
         },
         "refseq_transcript_ids": {
@@ -681,7 +1446,8 @@
           "description": "Sift Prediction"
         },
         "sift_score": {
-          "type": "string",
+          "type": "number",
+          "format": "double",
           "description": "Sift Score"
         },
         "transcript_id": {
@@ -694,10 +1460,91 @@
         }
       }
     },
+    "TranscriptConsequenceSummary": {
+      "type": "object",
+      "required": [
+        "transcriptId"
+      ],
+      "properties": {
+        "codonChange": {
+          "type": "string",
+          "description": "Codon change"
+        },
+        "consequenceTerms": {
+          "type": "string",
+          "description": "Consequence terms (comma separated)"
+        },
+        "entrezGeneId": {
+          "type": "string",
+          "description": "Entrez gene id"
+        },
+        "hgvsc": {
+          "type": "string",
+          "description": "HGVSc"
+        },
+        "hgvsp": {
+          "type": "string",
+          "description": "HGVSp"
+        },
+        "hgvspShort": {
+          "type": "string",
+          "description": "HGVSp short"
+        },
+        "hugoGeneSymbol": {
+          "type": "string",
+          "description": "Hugo gene symbol"
+        },
+        "proteinPosition": {
+          "description": "Protein position (start and end)",
+          "$ref": "#/definitions/IntegerRange"
+        },
+        "refSeq": {
+          "type": "string",
+          "description": "RefSeq id"
+        },
+        "transcriptId": {
+          "type": "string",
+          "description": "Transcript id"
+        },
+        "variantClassification": {
+          "type": "string",
+          "description": "Variant classification"
+        }
+      }
+    },
+    "UntranslatedRegion": {
+      "type": "object",
+      "required": [
+        "end",
+        "start",
+        "strand",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "UTR Type"
+        },
+        "start": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Start position of UTR"
+        },
+        "end": {
+          "type": "integer",
+          "format": "int32",
+          "description": "End position of UTR"
+        },
+        "strand": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Strand UTR is on, -1 for - and 1 for +"
+        }
+      }
+    },
     "VariantAnnotation": {
       "type": "object",
       "required": [
-        "annotationJSON",
         "id",
         "variant"
       ],
@@ -710,14 +1557,28 @@
           "type": "string",
           "description": "Annotation data as JSON string"
         },
+        "annotation_summary": {
+          "description": "Variant Annotation Summary",
+          "$ref": "#/definitions/VariantAnnotationSummary"
+        },
         "assembly_name": {
           "type": "string",
           "description": "NCBI build number"
+        },
+        "colocatedVariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ColocatedVariant"
+          }
         },
         "end": {
           "type": "integer",
           "format": "int32",
           "description": "End position"
+        },
+        "hotspots": {
+          "description": "Hotspot Annotation",
+          "$ref": "#/definitions/HotspotAnnotation"
         },
         "id": {
           "type": "string",
@@ -726,6 +1587,10 @@
         "most_severe_consequence": {
           "type": "string",
           "description": "Most severe consequence"
+        },
+        "mutation_assessor": {
+          "description": "Mutation Assessor Annotation",
+          "$ref": "#/definitions/MutationAssessorAnnotation"
         },
         "seq_region_name": {
           "type": "string",
@@ -751,6 +1616,54 @@
         "variant": {
           "type": "string",
           "description": "Variant key"
+        }
+      }
+    },
+    "VariantAnnotationSummary": {
+      "type": "object",
+      "required": [
+        "transcriptConsequences",
+        "variant"
+      ],
+      "properties": {
+        "assemblyName": {
+          "type": "string",
+          "description": "Assembly name"
+        },
+        "canonicalTranscriptId": {
+          "type": "string",
+          "description": "Canonical transcript id"
+        },
+        "genomicLocation": {
+          "description": "Genomic location",
+          "$ref": "#/definitions/GenomicLocation"
+        },
+        "strandSign": {
+          "type": "string",
+          "description": "Strand (- or +)"
+        },
+        "transcriptConsequences": {
+          "type": "array",
+          "description": "List of transcript consequence summaries",
+          "items": {
+            "$ref": "#/definitions/TranscriptConsequenceSummary"
+          }
+        },
+        "variant": {
+          "type": "string",
+          "description": "Variant key"
+        },
+        "variantType": {
+          "type": "string",
+          "description": "Variant type"
+        }
+      }
+    },
+    "Version": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
         }
       }
     }

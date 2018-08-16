@@ -112,7 +112,7 @@ ul.StudyList {
     }
 
     &.Level1 {
-      label {      
+      label {
         border-bottom: 1px solid rgb(232, 241, 248);
         color: #333;
         display: block;
@@ -158,6 +158,14 @@ li.Study {
     background-color:#F8F8F8;
   }
 
+  :global(.overlappingStudy) {
+
+    color:$state-danger-text !important;
+    i {
+      margin-left:5px;
+    }
+  }
+
   label {
     font-weight: 400;
     margin: 0;
@@ -174,6 +182,11 @@ li.Study {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+  }
+
+  .DeletedStudy {
+    text-decoration: line-through;
+    color: rgb(198, 203, 209);
   }
 
   @media (min-width: 1450px) {
@@ -205,13 +218,14 @@ li.Study {
 
     .StudyLinks {
       display: inline-block;
-      width: 57px;
+      min-width: 57px;
 
-      span.icon {
-        color: #ccc;
-        text-align: center;
-        margin: 0 0 0 4px;
-        min-width: 15px;
+      > * {
+        margin-left:3px;
+      }
+
+      span.summaryIcon {
+        cursor: pointer;
       }
 
       span.iconWithTooltip {
@@ -220,6 +234,10 @@ li.Study {
 
       a > span.icon {
         color: #1982b8;
+      }
+
+      a > span.trashIcon {
+        color: #808080;
       }
     }
 

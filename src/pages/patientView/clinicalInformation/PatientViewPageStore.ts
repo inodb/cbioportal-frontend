@@ -21,7 +21,7 @@ import OncoKbEvidenceCache from "shared/cache/OncoKbEvidenceCache";
 import GenomeNexusEnrichmentCache from "shared/cache/GenomeNexusEnrichment";
 import PubMedCache from "shared/cache/PubMedCache";
 import {IOncoKbData} from "shared/model/OncoKB";
-import {IHotspotData} from "shared/model/CancerHotspots";
+import {IHotspotIndex} from "shared/model/CancerHotspots";
 import {IMutSigData} from "shared/model/MutSig";
 import {ICivicVariant, ICivicGene} from "shared/model/Civic.ts";
 import {ClinicalInformationData} from "shared/model/ClinicalInformation";
@@ -32,16 +32,18 @@ import MutationCountCache from "shared/cache/MutationCountCache";
 import AppConfig from "appConfig";
 import {
     findMolecularProfileIdDiscrete, ONCOKB_DEFAULT, fetchOncoKbData,
-    fetchCnaOncoKbData, indexHotspotData, mergeMutations, fetchHotspotsData, fetchMyCancerGenomeData, fetchCosmicData,
-    fetchMutationData, fetchDiscreteCNAData, generateSampleIdToTumorTypeMap, findMutationMolecularProfileId,
+    fetchCnaOncoKbData, mergeMutations, fetchMyCancerGenomeData, fetchCosmicData,
+    fetchMutationData, fetchDiscreteCNAData, generateUniqueSampleKeyToTumorTypeMap, findMutationMolecularProfileId,
     findUncalledMutationMolecularProfileId, mergeMutationsIncludingUncalled, fetchGisticData, fetchCopyNumberData,
     fetchMutSigData, findMrnaRankMolecularProfileId, mergeDiscreteCNAData, fetchSamplesForPatient, fetchClinicalData,
     fetchCopyNumberSegments, fetchClinicalDataForPatient, makeStudyToCancerTypeMap,
     fetchCivicGenes, fetchCnaCivicGenes, fetchCivicVariants, groupBySampleId, findSamplesWithoutCancerTypeClinicalData,
-    fetchStudiesForSamplesWithoutCancerTypeClinicalData, fetchOncoKbAnnotatedGenes
+    fetchStudiesForSamplesWithoutCancerTypeClinicalData, fetchOncoKbAnnotatedGenesSuppressErrors
 } from "shared/lib/StoreUtils";
+import {indexHotspotsData, fetchHotspotsData} from "shared/lib/CancerHotspotsUtils";
 import {stringListToSet} from "../../../shared/lib/StringUtils";
 import {Gene as OncoKbGene} from "../../../shared/api/generated/OncoKbAPI";
+import {MutationTableDownloadDataFetcher} from "shared/lib/MutationTableDownloadDataFetcher";
 
 type PageMode = 'patient' | 'sample';
 
@@ -224,14 +226,28 @@ export class PatientViewPageStore {
 
     readonly pathologyReport = remoteData({
         await: () => [this.derivedPatientId],
-        invoke: async() => {
+        invoke: () => {
+            // only check path report for tcga studies
+            if (this.studyId.toLowerCase().indexOf('tcga') > -1) {
+                const pathLinkUrl = "https://raw.githubusercontent.com/inodb/datahub/a0d36d77b242e32cda3175127de73805b028f595/tcga/pathology_reports/symlink_by_patient";
+                const rawPdfUrl = "https://github.com/inodb/datahub/raw/a0d36d77b242e32cda3175127de73805b028f595/tcga/pathology_reports";
+                const reports: PathologyReportPDF[] = [];
 
-            let resp: any = await request.get(`https://api.github.com/search/code?q=${this.patientId}+extension:pdf+in:path+repo:cBioPortal/datahub`);
-
-            const parsedResp: any = JSON.parse(resp.text);
-
-            return handlePathologyReportCheckResponse(this.patientId, parsedResp);
-
+                // keep checking if patient has more reports recursively
+                function getPathologyReport(patientId:string, i:number):any {
+                    return request.get(`${pathLinkUrl}/${patientId}.${i}`).then(function(resp){
+                            // add report
+                            let pdfName: string = resp.text.split('/')[1];
+                            reports.push({name: `${pdfName}`, url: `${rawPdfUrl}/${pdfName}`});
+                            // check if patient has more reports
+                            return getPathologyReport(patientId, i+1);
+                        }, () => reports);
+                }
+                
+               return getPathologyReport(this.patientId, 0);
+            } else {
+                return [];
+            }
         },
         onError: (err: Error) => {
             // fail silently
@@ -481,13 +497,10 @@ export class PatientViewPageStore {
     }, []);
 
     readonly oncoKbAnnotatedGenes = remoteData({
-        invoke:()=>fetchOncoKbAnnotatedGenes(),
-        onError: (err: Error) => {
-            // fail silently, leave the error handling responsibility to the data consumer
-        }
+        invoke:()=>fetchOncoKbAnnotatedGenesSuppressErrors()
     }, {});
 
-    readonly oncoKbData = remoteData<IOncoKbData>({
+    readonly oncoKbData = remoteData<IOncoKbData|Error>({
         await: () => [
             this.oncoKbAnnotatedGenes,
             this.mutationData,
@@ -497,7 +510,7 @@ export class PatientViewPageStore {
             this.studies
         ],
         invoke: () => {
-            return fetchOncoKbData(this.sampleIdToTumorType, this.oncoKbAnnotatedGenes.result || {}, this.mutationData, this.uncalledMutationData);
+            return fetchOncoKbData(this.uniqueSampleKeyToTumorType, this.oncoKbAnnotatedGenes.result || {}, this.mutationData, this.uncalledMutationData);
         },
         onError: (err: Error) => {
             // fail silently, leave the error handling responsibility to the data consumer
@@ -544,7 +557,7 @@ export class PatientViewPageStore {
             this.clinicalDataForSamples,
             this.studies
         ],
-        invoke: async() => fetchCnaOncoKbData(this.sampleIdToTumorType, this.oncoKbAnnotatedGenes.result || {}, this.discreteCNAData),
+        invoke: async() => fetchCnaOncoKbData(this.uniqueSampleKeyToTumorType, this.oncoKbAnnotatedGenes.result || {}, this.discreteCNAData),
         onError: (err: Error) => {
             // fail silently, leave the error handling responsibility to the data consumer
         }
@@ -592,10 +605,12 @@ export class PatientViewPageStore {
         return [];
     }
 
-    @computed get indexedHotspotData(): IHotspotData|undefined
-    {
-        return indexHotspotData(this.hotspotData);
-    }
+    readonly indexedHotspotData = remoteData<IHotspotIndex|undefined>({
+        await:()=>[
+            this.hotspotData
+        ],
+        invoke: ()=>Promise.resolve(indexHotspotsData(this.hotspotData))
+    });
 
     @computed get mergedMutationData(): Mutation[][] {
         return mergeMutations(this.mutationData);
@@ -605,8 +620,8 @@ export class PatientViewPageStore {
         return mergeMutationsIncludingUncalled(this.mutationData, this.uncalledMutationData);
     }
 
-    @computed get sampleIdToTumorType(): {[sampleId: string]: string} {
-        return generateSampleIdToTumorTypeMap(this.clinicalDataForSamples,
+    @computed get uniqueSampleKeyToTumorType(): {[sampleId: string]: string} {
+        return generateUniqueSampleKeyToTumorTypeMap(this.clinicalDataForSamples,
             this.studiesForSamplesWithoutCancerTypeClinicalData,
             this.samplesWithoutCancerTypeClinicalData);
     }
@@ -657,6 +672,10 @@ export class PatientViewPageStore {
 
     @cached get mutationCountCache() {
         return new MutationCountCache();
+    }
+
+    @cached get downloadDataFetcher() {
+        return new MutationTableDownloadDataFetcher(this.mutationData, () => this.genomeNexusEnrichmentCache);
     }
 
     @action setActiveTabId(id: string) {

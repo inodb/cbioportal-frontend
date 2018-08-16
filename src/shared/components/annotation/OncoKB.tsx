@@ -67,6 +67,18 @@ export default class OncoKB extends React.Component<IOncoKbProps, {}>
         return values;
     }
 
+    public static download(indicator?: IndicatorQueryResp|undefined|null): string
+    {
+        if (!indicator) {
+            return "NA";
+        }
+
+        const oncogenic = indicator.oncogenic ? indicator.oncogenic : "Unknown";
+        const level = indicator.highestSensitiveLevel ? indicator.highestSensitiveLevel.toLowerCase() : "level NA";
+
+        return `${oncogenic}, ${level}`;
+    }
+
     constructor(props: IOncoKbProps)
     {
         super(props);
@@ -117,7 +129,7 @@ export default class OncoKB extends React.Component<IOncoKbProps, {}>
                         placement="right"
                         trigger={['hover', 'focus']}
                         onPopupAlign={hideArrow}
-                        destroyTooltipOnHide={false}
+                        destroyTooltipOnHide={true}
                     >
                         {oncoKbContent}
                     </DefaultTooltip>

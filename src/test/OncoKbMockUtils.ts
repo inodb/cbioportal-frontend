@@ -12,6 +12,14 @@ export function emptyQueryIndicator(): IndicatorQueryResp
         highestSensitiveLevel: "LEVEL_4",
         hotspot: false,
         lastUpdate: "",
+        mutationEffect: {
+            description: "",
+            knownEffect: "",
+            citations: {
+                abstracts: [],
+                pmids: []
+            }
+        },
         oncogenic: "",
         otherSignificantResistanceLevels: [],
         otherSignificantSensitiveLevels: [],
@@ -26,7 +34,8 @@ export function emptyQueryIndicator(): IndicatorQueryResp
             proteinStart: -1,
             tumorType: "",
             type: "web",
-            hgvs: ""
+            hgvs: "",
+            svType: "DELETION" // TODO: hack because svType is not optional
         },
         treatments: [],
         tumorTypeSummary: "",

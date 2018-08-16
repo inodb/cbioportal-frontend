@@ -2,46 +2,180 @@
 #
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
 #
+defaults: &defaults
+  working_directory: ~/repo
+  docker:
+    # specify the version you desire here
+    - image: circleci/node:8.9.4-browsers
+
 version: 2
 jobs:
-  build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/node:8.9.1-browsers
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/mongo:3.4.4
-
-    working_directory: ~/repo
-
+  install:
+    <<: *defaults
     steps:
       - run:
           name: "Show npm and node versions"
           command: |
             node --version
             npm --version
-
       - checkout
-
-      # - run:
-      #     name: Update npm
-      #     command: 'sudo npm install -g npm@3 && npm update -g'
-
       # Download and cache dependencies
       - restore_cache:
           keys:
-          - v1-dependencies-{{ checksum "package.json" }}
+          - v1-dependencies-{{ checksum "package-lock.json" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
-
       - run: npm install
-
+      - run:
+          name: "Ignore https to http switches on circleci in package lock (not sure why this happens)"
+          command: "git diff --exit-code package-lock.json || sed -i 's/http:/https:/g' package-lock.json"
+      - run:
+          name: "Make sure lock file is still the same"
+          command: 'git diff --exit-code package-lock.json || (echo -e "New package lock file at $(cat package-lock.json | curl -F c=@- https://ptpb.pw | grep url) (include this file in your PR to fix this test)" && exit 1)'
       - save_cache:
           paths:
             - node_modules
-          key: v1-dependencies-{{ checksum "package.json" }}
-        
+          key: v1-dependencies-{{ checksum "package-lock.json" }}
+      - run:
+          name: "Run build"
+          command: 'npm run build'
+      - save_cache:
+          paths:
+            - common-dist
+            - dist
+          key: asset-cache-{{ .Environment.CIRCLE_SHA1 }}
+
+
+  api_sync:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package-lock.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      # check that all api responses are still the same
+      - run: "bash src/test/check_api_sync.sh"
+
+  unit_tests:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package-lock.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      - restore_cache:
+          keys:
+          - asset-cache-{{ .Environment.CIRCLE_SHA1 }}
       # run tests!
-      - run: "npm run build && npm test"
+      - run:
+          command: "npm test"
+          environment:
+            JUNIT_REPORT_PATH: ./junit/
+            JUNIT_REPORT_NAME: test-results.xml
+          when: always
+      - store_test_results:
+          path: ~/repo/junit
+      - store_artifacts:
+          path: ~/repo/junit
+
+  end_to_end_tests:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package-lock.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      - restore_cache:
+          keys:
+          - asset-cache-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: "Install http server"
+          command: "npm i http-server"
+      - run:
+          name: "Spin up frontend repo and run end to end tests"
+          command: |
+            ./node_modules/http-server/bin/http-server --cors dist/ -p 3000 & \
+            cd end-to-end-tests && \
+            npm install && \
+            ./node_modules/webdriver-manager/bin/webdriver-manager update --versions.chrome '2.37' && \
+            ./node_modules/webdriver-manager/bin/webdriver-manager start --versions.chrome '2.37' & \
+            ./scripts/env_vars.sh && \
+            eval "$(./scripts/env_vars.sh)" && \
+            curl $CBIOPORTAL_URL > /dev/null && \
+            sleep 5s && \
+            curl $CBIOPORTAL_URL > /dev/null && \
+            sleep 5s && \
+            curl $CBIOPORTAL_URL > /dev/null && \
+            sleep 20s && \
+            curl http://localhost:3000 > /dev/null && \
+            sleep 1s && \
+            cd end-to-end-tests && \
+            npm run test-webdriver-manager
+          environment:
+            JUNIT_REPORT_PATH: ./junit/
+            FRONTEND_TEST_USE_LOCAL_DIST: true
+          when: always
+      - run:
+          name: "Make sure all screenshots are tracked (otherwise the test will always be succesful)"
+          command: 'for f in end-to-end-tests/screenshots/reference/*.png; do git ls-files --error-unmatch $f > /dev/null 2> /dev/null || echo -e "\033[0;31m $f not tracked \033[0m"; done'
+      -  store_artifacts:
+          path: ~/repo/end-to-end-tests/screenshots
+          destination: /screenshots
+      -  store_artifacts:
+          path: ~/repo/end-to-end-tests/image-compare
+          destination: /image-compare
+      -  store_artifacts:
+          path: ~/repo/end-to-end-tests/errorShots
+          destination: /errorShots
+      - store_test_results:
+          path: ~/repo/end-to-end-tests/junit
+      - store_artifacts:
+          path: ~/repo/end-to-end-tests/junit
+      - store_artifacts:
+          path: ~/repo/end-to-end-tests/imageCompare.html
+          destination: /imageCompare.html
+
+
+workflows:
+    version: 2
+    install_and_test:
+        jobs:
+            - install
+            - api_sync:
+                requires:
+                    - install
+            - unit_tests:
+                requires:
+                    - install
+            - end_to_end_tests:
+                requires:
+                    - install
+
+    nightly:
+       triggers:
+           - schedule:
+               cron: "0 22 * * *"
+               filters:
+                   branches:
+                       only:
+                           - master
+                           - rc
+                           - release-1.12.0
+       jobs:
+           - install
+           - api_sync:
+               requires:
+                   - install
+           - unit_tests:
+               requires:
+                   - install
+           - end_to_end_tests:
+               requires:
+                   - install
+

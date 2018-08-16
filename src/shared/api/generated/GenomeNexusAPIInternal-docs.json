@@ -12,8 +12,11 @@
       "url": "https://github.com/cBioPortal/genome-nexus/blob/master/LICENSE"
     }
   },
-  "basePath": "/",
   "tags": [
+    {
+      "name": "cross-reference-controller",
+      "description": "Cross Reference Controller"
+    },
     {
       "name": "cancer-hotspots-controller",
       "description": "Cancer Hotspots Controller"
@@ -23,12 +26,12 @@
       "description": "Mutation Assessor Controller"
     },
     {
-      "name": "isoform-override-controller",
-      "description": "Isoform Override Controller"
+      "name": "annotation-summary-controller",
+      "description": "Annotation Summary Controller"
     },
     {
-      "name": "ensembl-controller",
-      "description": "Ensembl Controller"
+      "name": "isoform-override-controller",
+      "description": "Isoform Override Controller"
     }
   ],
   "schemes": [
@@ -36,13 +39,198 @@
     "https"
   ],
   "paths": {
-    "/cancer_hotspots": {
+    "/annotation/summary": {
+      "post": {
+        "tags": [
+          "annotation-summary-controller"
+        ],
+        "summary": "Retrieves VEP annotation summary for the provided list of variants",
+        "operationId": "fetchVariantAnnotationSummaryPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "variants",
+            "description": "List of variants. For example [\"X:g.66937331T>A\",\"17:g.41242962_41242963insGA\"]",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "projection",
+            "in": "query",
+            "description": "Indicates whether to return summary for all transcripts or only for canonical transcript",
+            "required": false,
+            "type": "string",
+            "default": "ALL",
+            "enum": [
+              "ALL",
+              "CANONICAL"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/VariantAnnotationSummary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/annotation/summary/{variant}": {
+      "get": {
+        "tags": [
+          "annotation-summary-controller"
+        ],
+        "summary": "Retrieves VEP annotation summary for the provided variant",
+        "operationId": "fetchVariantAnnotationSummaryGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "variant",
+            "in": "path",
+            "description": "Variant. For example 17:g.41242962_41242963insGA",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "isoformOverrideSource",
+            "in": "query",
+            "description": "Isoform override source. For example uniprot",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "projection",
+            "in": "query",
+            "description": "Indicates whether to return summary for all transcripts or only for canonical transcript",
+            "required": false,
+            "type": "string",
+            "default": "ALL",
+            "enum": [
+              "ALL",
+              "CANONICAL"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/VariantAnnotationSummary"
+            }
+          }
+        }
+      }
+    },
+    "/cancer_hotspots/genomic": {
       "post": {
         "tags": [
           "cancer-hotspots-controller"
         ],
-        "summary": "Retrieves hotspot annotation for the provided list of variants",
-        "operationId": "fetchHotspotAnnotationPOST",
+        "summary": "Retrieves hotspot annotations for the provided list of genomic locations",
+        "operationId": "fetchHotspotAnnotationByGenomicLocationPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "genomicLocations",
+            "description": "List of genomic locations.",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GenomicLocation"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AggregatedHotspots"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancer_hotspots/genomic/{genomicLocation}": {
+      "get": {
+        "tags": [
+          "cancer-hotspots-controller"
+        ],
+        "summary": "Retrieves hotspot annotations for a specific genomic location",
+        "operationId": "fetchHotspotAnnotationByGenomicLocationGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "genomicLocation",
+            "in": "path",
+            "description": "A genomic location. For example 7,140453136,140453136,A,T",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Hotspot"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancer_hotspots/hgvs": {
+      "post": {
+        "tags": [
+          "cancer-hotspots-controller"
+        ],
+        "summary": "Retrieves hotspot annotations for the provided list of variants",
+        "operationId": "fetchHotspotAnnotationByHgvsPOST",
         "consumes": [
           "application/json"
         ],
@@ -69,20 +257,20 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/Hotspot"
+                "$ref": "#/definitions/AggregatedHotspots"
               }
             }
           }
         }
       }
     },
-    "/cancer_hotspots/{variant}": {
+    "/cancer_hotspots/hgvs/{variant}": {
       "get": {
         "tags": [
           "cancer-hotspots-controller"
         ],
-        "summary": "Retrieves hotspot annotation for a specific variant",
-        "operationId": "fetchHotspotAnnotationGET",
+        "summary": "Retrieves hotspot annotations for a specific variant",
+        "operationId": "fetchHotspotAnnotationByHgvsGET",
         "consumes": [
           "application/json"
         ],
@@ -105,345 +293,6 @@
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Hotspot"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript": {
-      "get": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves all Ensembl Transcripts",
-        "operationId": "fetchAllEnsemblTranscriptsGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/gene": {
-      "post": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by Ensembl gene IDs",
-        "operationId": "fetchEnsemblTranscriptsByGeneIdsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "geneIds",
-            "description": "List of Ensembl gene IDs. For example [\"ENSG00000136999\",\"ENSG00000272398\",\"ENSG00000198695\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/gene/{geneId}": {
-      "get": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by an Ensembl gene ID",
-        "operationId": "fetchEnsemblTranscriptsByGeneIdGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "geneId",
-            "in": "path",
-            "description": "An Ensembl gene ID. For example ENSG00000136999",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/hgnc": {
-      "post": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by Hugo Symbols",
-        "operationId": "fetchEnsemblTranscriptsByHugoSymbolsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "hugoSymbols",
-            "description": "List of Hugo Symbols. For example [\"TP53\",\"PIK3CA\",\"BRCA1\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          {
-            "name": "isoformOverrideSource",
-            "in": "query",
-            "description": "Isoform override source. For example uniprot",
-            "required": false,
-            "type": "string",
-            "default": "uniprot"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/hgnc/{hugoSymbol}": {
-      "get": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by an Ensembl gene ID",
-        "operationId": "fetchEnsemblTranscriptsByHugoSymbolGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "hugoSymbol",
-            "in": "path",
-            "description": "A Hugo Symbol. For example TP53",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "isoformOverrideSource",
-            "in": "query",
-            "description": "Isoform override source. For example uniprot",
-            "required": false,
-            "type": "string",
-            "default": "uniprot"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/EnsemblTranscript"
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/id": {
-      "post": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl Transcripts by Ensembl transcript IDs",
-        "operationId": "fetchEnsemblTranscriptsByTranscriptIdsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "transcriptIds",
-            "description": "List of Ensembl transcript IDs. For example [\"ENST00000361390\",\"ENST00000361453\",\"ENST00000361624\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/id/{transcriptId}": {
-      "get": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Transcripts by an Ensembl transcript ID",
-        "operationId": "fetchEnsemblTranscriptsByTranscriptIdGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "transcriptId",
-            "in": "path",
-            "description": "An Ensembl transcript ID. For example ENST00000361390",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/protein": {
-      "post": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by Ensembl protein IDs",
-        "operationId": "fetchEnsemblTranscriptsByProteinIdsPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "proteinIds",
-            "description": "List of Ensembl protein IDs. For example [\"ENSP00000439985\",\"ENSP00000478460\",\"ENSP00000346196\"]",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ensembl/transcript/protein/{proteinId}": {
-      "get": {
-        "tags": [
-          "ensembl-controller"
-        ],
-        "summary": "Retrieves Ensembl transcripts by an Ensembl protein ID",
-        "operationId": "fetchEnsemblTranscriptsByProteinIdGET",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "proteinId",
-            "in": "path",
-            "description": "An Ensembl protein ID. For example ENSP00000439985",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/EnsemblTranscript"
               }
             }
           }
@@ -668,65 +517,211 @@
           }
         }
       }
+    },
+    "/xrefs/{accession}": {
+      "get": {
+        "tags": [
+          "cross-reference-controller"
+        ],
+        "summary": "Perform lookups of Ensembl identifiers and retrieve their external references in other databases",
+        "operationId": "fetchGeneXrefsGET_1",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "accession",
+            "in": "path",
+            "description": "Ensembl gene accession. For example ENSG00000169083",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GeneXref"
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
     }
   },
   "definitions": {
-    "EnsemblTranscript": {
+    "AggregatedHotspots": {
       "type": "object",
       "required": [
-        "geneId",
-        "proteinId",
-        "transcriptId"
+        "genomicLocation",
+        "hotspots",
+        "variant"
       ],
       "properties": {
-        "geneId": {
-          "type": "string",
-          "description": "Ensembl gene id"
+        "genomicLocation": {
+          "description": "Genomic Location",
+          "$ref": "#/definitions/GenomicLocation"
         },
-        "proteinId": {
-          "type": "string",
-          "description": "Ensembl protein id"
+        "hotspots": {
+          "type": "array",
+          "description": "Hotspots",
+          "items": {
+            "$ref": "#/definitions/Hotspot"
+          }
         },
-        "proteinLength": {
+        "variant": {
+          "type": "string",
+          "description": "HGVS notation"
+        }
+      }
+    },
+    "GeneXref": {
+      "type": "object",
+      "required": [
+        "db_display_name",
+        "dbname",
+        "description",
+        "display_id",
+        "primary_id",
+        "version"
+      ],
+      "properties": {
+        "db_display_name": {
+          "type": "string",
+          "description": "Database display name"
+        },
+        "dbname": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description"
+        },
+        "display_id": {
+          "type": "string",
+          "description": "Display id"
+        },
+        "ensemblGeneId": {
+          "type": "string"
+        },
+        "info_text": {
+          "type": "string",
+          "description": "Database info text"
+        },
+        "info_types": {
+          "type": "string",
+          "description": "Database info type"
+        },
+        "primary_id": {
+          "type": "string",
+          "description": "Primary id"
+        },
+        "synonyms": {
+          "type": "array",
+          "description": "Synonyms",
+          "items": {
+            "type": "string"
+          }
+        },
+        "version": {
+          "type": "string",
+          "description": "Version"
+        }
+      }
+    },
+    "GenomicLocation": {
+      "type": "object",
+      "required": [
+        "chromosome",
+        "end",
+        "referenceAllele",
+        "start",
+        "variantAllele"
+      ],
+      "properties": {
+        "chromosome": {
+          "type": "string",
+          "description": "Chromosome"
+        },
+        "start": {
           "type": "integer",
           "format": "int32",
-          "description": "Length of protein"
+          "description": "Start Position"
         },
-        "transcriptId": {
+        "end": {
+          "type": "integer",
+          "format": "int32",
+          "description": "End Position"
+        },
+        "referenceAllele": {
           "type": "string",
-          "description": "Ensembl transcript id"
+          "description": "Reference Allele"
+        },
+        "variantAllele": {
+          "type": "string",
+          "description": "Variant Allele"
         }
       }
     },
     "Hotspot": {
       "type": "object",
-      "required": [
-        "transcriptId"
-      ],
       "properties": {
-        "geneId": {
-          "type": "string",
-          "description": "Ensembl gene id"
-        },
         "hugoSymbol": {
           "type": "string",
           "description": "Hugo gene symbol"
         },
-        "proteinEnd": {
-          "type": "string",
-          "description": "Protein end position"
+        "inframeCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Inframe mutation count"
         },
-        "proteinStart": {
-          "type": "string",
-          "description": "Protein start position"
+        "missenseCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Missense mutation count"
         },
         "residue": {
           "type": "string",
-          "description": "Hotspot Residue"
+          "description": "Hotspot residue"
         },
-        "transcriptId": {
+        "spliceCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Splice mutation count"
+        },
+        "truncatingCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Truncation mutation count"
+        },
+        "tumorCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Tumor count"
+        },
+        "type": {
           "type": "string",
-          "description": "Transcript id"
+          "description": "Hotspot type"
+        }
+      }
+    },
+    "IntegerRange": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "start": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },
@@ -777,6 +772,9 @@
           "type": "number",
           "format": "double",
           "description": "Functional impact score"
+        },
+        "hgvs": {
+          "type": "string"
         },
         "hugoSymbol": {
           "type": "string",
@@ -860,6 +858,98 @@
           "type": "number",
           "format": "double",
           "description": "Variant specificity score"
+        }
+      }
+    },
+    "TranscriptConsequenceSummary": {
+      "type": "object",
+      "required": [
+        "transcriptId"
+      ],
+      "properties": {
+        "codonChange": {
+          "type": "string",
+          "description": "Codon change"
+        },
+        "consequenceTerms": {
+          "type": "string",
+          "description": "Consequence terms (comma separated)"
+        },
+        "entrezGeneId": {
+          "type": "string",
+          "description": "Entrez gene id"
+        },
+        "hgvsc": {
+          "type": "string",
+          "description": "HGVSc"
+        },
+        "hgvsp": {
+          "type": "string",
+          "description": "HGVSp"
+        },
+        "hgvspShort": {
+          "type": "string",
+          "description": "HGVSp short"
+        },
+        "hugoGeneSymbol": {
+          "type": "string",
+          "description": "Hugo gene symbol"
+        },
+        "proteinPosition": {
+          "description": "Protein position (start and end)",
+          "$ref": "#/definitions/IntegerRange"
+        },
+        "refSeq": {
+          "type": "string",
+          "description": "RefSeq id"
+        },
+        "transcriptId": {
+          "type": "string",
+          "description": "Transcript id"
+        },
+        "variantClassification": {
+          "type": "string",
+          "description": "Variant classification"
+        }
+      }
+    },
+    "VariantAnnotationSummary": {
+      "type": "object",
+      "required": [
+        "transcriptConsequences",
+        "variant"
+      ],
+      "properties": {
+        "assemblyName": {
+          "type": "string",
+          "description": "Assembly name"
+        },
+        "canonicalTranscriptId": {
+          "type": "string",
+          "description": "Canonical transcript id"
+        },
+        "genomicLocation": {
+          "description": "Genomic location",
+          "$ref": "#/definitions/GenomicLocation"
+        },
+        "strandSign": {
+          "type": "string",
+          "description": "Strand (- or +)"
+        },
+        "transcriptConsequences": {
+          "type": "array",
+          "description": "List of transcript consequence summaries",
+          "items": {
+            "$ref": "#/definitions/TranscriptConsequenceSummary"
+          }
+        },
+        "variant": {
+          "type": "string",
+          "description": "Variant key"
+        },
+        "variantType": {
+          "type": "string",
+          "description": "Variant type"
         }
       }
     }

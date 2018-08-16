@@ -3,7 +3,8 @@ import {
     default as getCanonicalMutationType, CanonicalMutationType,
     ProteinImpactType, getProteinImpactTypeFromCanonical
 } from "./getCanonicalMutationType";
-import {MolecularProfile, Mutation, SampleIdentifier} from "shared/api/generated/CBioPortalAPI";
+import {Gene, MolecularProfile, Mutation, SampleIdentifier} from "shared/api/generated/CBioPortalAPI";
+import {GenomicLocation} from "shared/api/generated/GenomeNexusAPIInternal";
 import {MUTATION_STATUS_GERMLINE, MOLECULAR_PROFILE_UNCALLED_MUTATIONS_SUFFIX} from "shared/constants";
 import {findFirstMostCommonElt} from "./findFirstMostCommonElt";
 import {toSampleUuid} from "./UuidUtils";
@@ -98,6 +99,37 @@ export function groupMutationsByProteinStartPos(mutationData: Mutation[][]): {[p
     }
 
     return map;
+}
+
+export function groupMutationsByGeneAndPatientAndProteinChange(mutations: Mutation[]): {[key: string]: Mutation[]}
+{
+    // key = <gene>_<patient>_<proteinChange>
+    const map: {[key: string]: Mutation[]} = {};
+
+    for (const mutation of mutations)
+    {
+        const key = `${mutation.gene.hugoGeneSymbol}_${mutation.patientId}_${mutation.proteinChange}`;
+        map[key] = map[key] || [];
+        map[key].push(mutation);
+    }
+
+    return map;
+}
+
+export function countDuplicateMutations(groupedMutations: {[key: string]: Mutation[]}): number
+{
+    // helper to count duplicate mutations
+    const countMapper = (mutations: Mutation[]) => mutations.length > 0 ? mutations.length - 1 : 0;
+
+    // helper to get the total sum
+    const sumReducer = (acc: number, current: number) => acc + current;
+
+    return _.values(groupedMutations).map(countMapper).reduce(sumReducer, 0);
+}
+
+export function countUniqueMutations(mutations: Mutation[]): number
+{
+    return Object.keys(groupMutationsByGeneAndPatientAndProteinChange(mutations)).length;
 }
 
 /**
@@ -198,4 +230,63 @@ export function somaticMutationRate(hugoGeneSymbol: string, mutations: Mutation[
     } else {
         return 0;
     }
+}
+
+export function updateMissingGeneInfo(mutations: Partial<Mutation>[],
+                                      genesByHugoSymbol: {[hugoGeneSymbol:string]: Gene})
+{
+    mutations.forEach(mutation => {
+        if (mutation.gene && mutation.gene.hugoGeneSymbol)
+        {
+            const gene = genesByHugoSymbol[mutation.gene.hugoGeneSymbol];
+
+            if (gene) {
+                // keep the existing "mutation.gene" values: only overwrite missing (undefined) values
+                mutation.gene = _.merge({}, gene, mutation.gene);
+                // also update entrezGeneId for the mutation itself
+                mutation.entrezGeneId = mutation.entrezGeneId || gene.entrezGeneId;
+            }
+        }
+    });
+}
+
+export function extractGenomicLocation(mutation: Mutation)
+{
+    if (mutation.gene && mutation.gene.chromosome &&
+        mutation.startPosition &&
+        mutation.endPosition &&
+        mutation.referenceAllele &&
+        mutation.variantAllele)
+    {
+        return {
+            chromosome: mutation.gene.chromosome.replace("chr", ""),
+            start: mutation.startPosition,
+            end: mutation.endPosition,
+            referenceAllele: mutation.referenceAllele,
+            variantAllele: mutation.variantAllele
+        };
+    }
+    else {
+        return undefined;
+    }
+}
+
+export function genomicLocationString(genomicLocation: GenomicLocation)
+{
+    return `${genomicLocation.chromosome},${genomicLocation.start},${genomicLocation.end},${genomicLocation.referenceAllele},${genomicLocation.variantAllele}`;
+}
+
+export function uniqueGenomicLocations(mutations: Mutation[]): GenomicLocation[]
+{
+    const genomicLocationMap: {[key: string]: GenomicLocation} = {};
+
+    mutations.map((mutaiton: Mutation) => {
+        const genomicLocation: GenomicLocation|undefined = extractGenomicLocation(mutaiton);
+
+        if (genomicLocation) {
+            genomicLocationMap[genomicLocationString(genomicLocation)] = genomicLocation;
+        }
+    });
+
+    return _.values(genomicLocationMap);
 }

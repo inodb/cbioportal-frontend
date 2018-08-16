@@ -94,9 +94,9 @@ export default class StudyListLogic
 	@cached get map_node_filterBySelectedStudies()
 	{
 		let map_node_filter = new Map<CancerTreeNode, boolean>();
-		if (this.store.selectedStudies.length)
+		if (this.store.selectableSelectedStudies.length)
 		{
-			for (let study of this.store.selectedStudies)
+			for (let study of this.store.selectableSelectedStudies)
 			{
 				let meta = this.store.treeData.map_node_meta.get(study) as NodeMetadata;
 
@@ -153,7 +153,7 @@ export default class StudyListLogic
 	cancerTypeContainsSelectedStudies(cancerType:CancerType):boolean
 	{
 		let descendantStudies = this.getMetadata(cancerType).descendantStudies;
-		return _.intersection(this.store.selectedStudies, descendantStudies).length > 0;
+		return _.intersection(this.store.selectableSelectedStudies, descendantStudies).length > 0;
 	}
 
 	getDepth(node:CancerType):number
@@ -205,13 +205,13 @@ export class FilteredCancerTreeView
 		return meta.descendantStudies.filter(this.nodeFilter);
 	}
 
-	getCheckboxProps(node: CancerTreeNode): {checked: boolean, indeterminate?: boolean}
+	getCheckboxProps(node: CancerTreeNode): {checked: boolean, indeterminate?: boolean, disabled?: boolean}
 	{
 		let meta = this.getMetadata(node);
 		if (meta.isCancerType)
 		{
-			let selectedStudyIds = this.store.selectedStudyIds || [];
-			let selectedStudies = selectedStudyIds.map(studyId => this.store.treeData.map_studyId_cancerStudy.get(studyId) as CancerStudy);
+			let selectableSelectedStudyIds = this.store.selectableSelectedStudyIds || [];
+			let selectedStudies = selectableSelectedStudyIds.map(studyId => this.store.treeData.map_studyId_cancerStudy.get(studyId) as CancerStudy);
 			let shownStudies = this.getDescendantCancerStudies(node);
 			let shownAndSelectedStudies = _.intersection(shownStudies, selectedStudies);
 			let checked = shownAndSelectedStudies.length > 0;
@@ -222,10 +222,34 @@ export class FilteredCancerTreeView
 		else
 		{
 			let study = node as CancerStudy;
-			let checked = !!this.store.selectedStudyIds.find(id => id == study.studyId);
-			return {checked};
+			let checked = !!this.store.selectableSelectedStudyIds.find(id => id == study.studyId);
+			let disabled = this.store.isDeletedVirtualStudy(study.studyId);
+			return {checked,disabled};
 		}
 	}
+
+	isCheckBoxDisabled(node: CancerTreeNode):boolean {
+		let meta = this.getMetadata(node);
+		if (meta.isCancerType)
+		{
+			return false;
+		}
+		else
+		{
+			let study = node as CancerStudy;
+			if(this.store.isDeletedVirtualStudy(study.studyId)) {
+				return true;
+			}
+			return false;
+		}
+
+	}
+
+	@action clearAllSelection(): void
+	{
+        this.store.selectableSelectedStudyIds = []
+	}
+
 
 	@action onCheck(node:CancerTreeNode, checked:boolean): void
 	{
@@ -246,14 +270,42 @@ export class FilteredCancerTreeView
 			this.handleCheckboxStudyIds(clickedStudyIds, checked);
 	}
 
+	getSelectionReport(){
+
+        let selectableSelectedStudyIds = this.store.selectableSelectedStudyIds || [];
+        let selectableSelectedStudies = selectableSelectedStudyIds.map(studyId => this.store.treeData.map_studyId_cancerStudy.get(studyId) as CancerStudy);
+        let shownStudies = this.getDescendantCancerStudies(this.store.treeData.rootCancerType);
+        let shownAndSelectedStudies = _.intersection(shownStudies, selectableSelectedStudies) as CancerStudy[];
+
+		return {
+            selectableSelectedStudyIds,
+			selectableSelectedStudies,
+			shownStudies,
+			shownAndSelectedStudies
+		}
+
+    }
+
+    @action toggleAllFiltered(){
+
+        const {selectableSelectedStudyIds, selectableSelectedStudies, shownStudies, shownAndSelectedStudies} = this.getSelectionReport();
+
+        if (shownStudies.length === shownAndSelectedStudies.length) { // deselect
+            this.store.selectableSelectedStudyIds = _.without(this.store.selectableSelectedStudyIds, ... shownStudies.map((study:CancerStudy)=>study.studyId));
+        } else {
+            this.store.selectableSelectedStudyIds = _.union(this.store.selectableSelectedStudyIds, shownStudies.map((study:CancerStudy)=>study.studyId));
+        }
+
+    }
+
 	private handleCheckboxStudyIds(clickedStudyIds:string[], checked:boolean)
 	{
-		let selectedStudyIds = this.store.selectedStudyIds;
+		let selectableSelectedStudyIds = this.store.selectableSelectedStudyIds;
 		if (checked)
-			selectedStudyIds = _.union(selectedStudyIds, clickedStudyIds);
+			selectableSelectedStudyIds = _.union(selectableSelectedStudyIds, clickedStudyIds);
 		else
-			selectedStudyIds = _.difference(selectedStudyIds, clickedStudyIds);
+			selectableSelectedStudyIds = _.difference(selectableSelectedStudyIds, clickedStudyIds);
 
-		this.store.selectedStudyIds = selectedStudyIds;
+		this.store.selectableSelectedStudyIds = selectableSelectedStudyIds;
 	}
 }

@@ -1,4 +1,4 @@
-import {Mutation, MolecularProfile, GeneMolecularData} from "../../api/generated/CBioPortalAPI";
+import {Mutation, MolecularProfile, NumericGeneMolecularData} from "../../api/generated/CBioPortalAPI";
 import * as _ from 'lodash';
 
 var cna_profile_data_to_string: any = {
@@ -9,9 +9,12 @@ var cna_profile_data_to_string: any = {
     "2": "amp"
 };
 
+export type SimplifiedMutationType =
+    "missense" | "frameshift" | "nonsense" | "splice" |
+    "nonstart" | "nonstop" | "fusion" | "inframe" | "other";
 
-var getSimplifiedMutationType = function (type: string) {
-    var ret = null;
+export function getSimplifiedMutationType(type: string):SimplifiedMutationType {
+    let ret:SimplifiedMutationType;
     type = (typeof type === "string") ? type.toLowerCase() : "";
     switch (type) {
         case "missense_mutation":
@@ -71,24 +74,23 @@ var getSimplifiedMutationType = function (type: string) {
 };
 
 export default class accessors {
+    private molecularProfileIdToMolecularProfile:{[molecularProfileId:string]:MolecularProfile};
 
-    constructor(public geneticProfiles: MolecularProfile[]) {
-
+    constructor(molecularProfiles: MolecularProfile[]) {
+        this.molecularProfileIdToMolecularProfile = _.keyBy(molecularProfiles, p=>p.molecularProfileId);
     }
 
     public gene(d: Mutation) {
         return d.gene.hugoGeneSymbol;
     }
 
-    public alterationType(geneticProfileId:string) {
-        const ret = _.find(this.geneticProfiles, (profile: MolecularProfile) => {
-            return profile.molecularProfileId === geneticProfileId;
-        });
-        return (ret) ? ret.molecularAlterationType : undefined;
+    public molecularAlterationType(molecularProfileId:string) {
+        const profile = this.molecularProfileIdToMolecularProfile[molecularProfileId];
+        return profile && profile.molecularAlterationType;
     }
 
-    public cna(d: GeneMolecularData) {
-        if (this.alterationType(d.molecularProfileId) === 'COPY_NUMBER_ALTERATION') {
+    public cna(d: NumericGeneMolecularData) {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'COPY_NUMBER_ALTERATION') {
             return cna_profile_data_to_string[d.value];
         } else {
             return null;
@@ -96,8 +98,8 @@ export default class accessors {
     }
 
     public mut_type(d: Mutation) {
-        if (this.alterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
-            if (d.mutationType === "fusion") {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
+            if (d.mutationType && d.mutationType.toLowerCase() === "fusion") {
                 return null;
             } else if (d.proteinChange && d.proteinChange.toLowerCase() === "promoter") {
                 return "promoter";
@@ -110,7 +112,7 @@ export default class accessors {
     }
 
     public mut_position(d: Mutation) {
-        if (this.alterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
             var start = d.proteinPosStart;
             var end = d.proteinPosEnd;
             if (start !== null && end !== null) {
@@ -124,24 +126,24 @@ export default class accessors {
     }
 
     public mut_amino_acid_change(d: Mutation) {
-        if (this.alterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'MUTATION_EXTENDED') {
             return d.proteinChange;
         } else {
             return null;
         }
     }
 
-    public exp(d: GeneMolecularData) {
-        if (this.alterationType(d.molecularProfileId) === 'MRNA_EXPRESSION') {
-            return parseFloat(d.value);
+    public exp(d: NumericGeneMolecularData) {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'MRNA_EXPRESSION') {
+            return d.value;
         } else {
             return null;
         }
     }
 
-    public prot(d: GeneMolecularData) {
-        if (this.alterationType(d.molecularProfileId) === 'PROTEIN_LEVEL') {
-            return parseFloat(d.value);
+    public prot(d: NumericGeneMolecularData) {
+        if (this.molecularAlterationType(d.molecularProfileId) === 'PROTEIN_LEVEL') {
+            return d.value;
         } else {
             return null;
         }

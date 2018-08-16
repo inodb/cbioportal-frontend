@@ -1,3 +1,7 @@
+var path = require('path');
+var VisualRegressionCompare = require('wdio-visual-regression-service/compare');
+var getScreenshotName = require('./getScreenshotName');
+
 exports.config = {
     //
     // ==================
@@ -9,7 +13,7 @@ exports.config = {
     // directory is where your package.json resides, so `wdio` will be called from there.
     //
     specs: [
-        './specs/**/*.js'
+        process.env.SPEC_FILE_PATTERN || './specs/**/*.spec.js'  // './specs/**/screenshot.spec.js'
     ],
     // Patterns to exclude.
     exclude: [
@@ -31,19 +35,24 @@ exports.config = {
     // and 30 processes will get spawned. The property handles how many capabilities
     // from the same test should run tests.
     //
-    maxInstances: 1,
+    maxInstances: 5,
     //
     // If you have trouble getting all important capabilities together, check out the
     // Sauce Labs platform configurator - a great tool to configure your capabilities:
     // https://docs.saucelabs.com/reference/platforms-configurator
     //
     capabilities: [{
-        // maxInstances can get overwritten per capability. So if you have an in-house Selenium
-        // grid with only 5 firefox instances available you can make sure that not more than
-        // 5 instances get started at a time.
-        maxInstances: 1,
-        //
+
         browserName: 'chrome',
+        chromeOptions: {
+            args: ['--disable-composited-antialiasing']
+        }
+
+        // chromeOptions: {
+        //     args: ['--headless'],
+        //     binary: '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
+        // }
+
     }],
     //
     // ===================
@@ -58,7 +67,7 @@ exports.config = {
 
     //
     // Level of logging verbosity: silent | verbose | command | data | result | error
-    logLevel: 'silent',
+    logLevel: 'error',
     //
     // Enables colors for log output.
     coloredLogs: true,
@@ -106,7 +115,21 @@ exports.config = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: [],
+    services: [
+        'visual-regression',
+    ],
+    visualRegression: {
+        compare: new VisualRegressionCompare.LocalCompare({
+            referenceName: getScreenshotName(path.join(process.cwd(), 'screenshots/reference')),
+            screenshotName: getScreenshotName(path.join(process.cwd(), 'screenshots/screen')),
+            diffName: getScreenshotName(path.join(process.cwd(), 'screenshots/diff')),
+            misMatchTolerance:0.01,
+            ignoreComparison: "antialiasing"
+        }),
+        viewportChangePause: 300,
+        viewports: [{ width: 1600, height: 1000 }],
+        orientations: ['landscape', 'portrait'],
+    },
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
     // see also: http://webdriver.io/guide/testrunner/frameworks.html
@@ -118,13 +141,21 @@ exports.config = {
     // Test reporter for stdout.
     // The only one supported by default is 'dot'
     // see also: http://webdriver.io/guide/testrunner/reporters.html
-    reporters: ['spec'],
+    reporters: ['spec', 'junit'],
+    reporterOptions: {
+        junit: {
+            outputDir: process.env.JUNIT_REPORT_PATH,
+            outputFileFormat: function(opts) { // optional
+                return `results-${opts.cid}.${opts.capabilities}.xml`
+            }
+        }
+    },
     //
     // Options to be passed to Mocha.
     // See the full list at http://mochajs.org/
     mochaOpts: {
         ui: 'bdd',
-        timeout: 120000 // make big when using browser.debug()
+        timeout: 180000 // make big when using browser.debug()
     },
     //
     // =====

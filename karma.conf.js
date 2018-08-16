@@ -6,23 +6,30 @@ process.env.NODE_ENV = 'test';
 
 var webpackConfig = require('./webpack.config');
 
+const webpack = require('webpack');
+
 var path = require('path');
 
 // code which should not impact coverage reports should be listed
 // in exclude
-webpackConfig.module.postLoaders =  [
-    {
+webpackConfig.module.rules.push({
         test: /.tsx?$/,
         include: path.resolve(__dirname, 'src/'),
         exclude: [
             /.spec./,
             /\/shared\/api\//
         ],
+        enforce:'post',
         loader: 'istanbul-instrumenter-loader'
-    }
-];
+});
 
-webpackConfig.entry = [];
+//this will be used by in test context to load corresponding spec files if there is a grep passed (or all if not)
+webpackConfig.plugins.push(new webpack.DefinePlugin({
+    'SPEC_REGEXP': ('grep' in argv) ? `/(global|(${argv.grep}[a-z]*))\.spec\./i` : '/\.spec\.(jsx*|tsx*)$/'
+}));
+
+webpackConfig.entry = "";
+
 
 module.exports = function (config) {
     config.set({
@@ -34,9 +41,13 @@ module.exports = function (config) {
                 watched: false,
                 served: true
             },
-            'tests.webpack.js',
+            { pattern: "src/**/*.json",
+                included: false,
+                watched:false,
+                served:true
+            },
+            'tests.webpack.js'
         ],
-
         preprocessors: {
             // add webpack as preprocessor
             'tests.webpack.js': ['webpack', 'sourcemap'],
@@ -48,28 +59,52 @@ module.exports = function (config) {
         webpackServer: {
             noInfo: true
         },
+        webpackMiddleware: {
+            // webpack-dev-middleware configuration
+            // i. e.
+            stats: 'errors-only'
+        },
 
         plugins: [
             'karma-mocha',
+            'karma-mocha-reporter',
             'karma-chai',
             'karma-webpack',
-            'karma-phantomjs-launcher',
-            'karma-spec-reporter',
+            //'karma-phantomjs-launcher',
+            'karma-chrome-launcher',
             'karma-sourcemap-loader',
             'karma-coverage',
-            'karma-coverage-istanbul-reporter'
+            'karma-junit-reporter'
         ],
 
-        coverageIstanbulReporter: {
-            reports: ['text-summary','json-summary','html', 'lcov'],
-            dir: './test/fixtures/outputs'
+        customLaunchers: {
+            Chrome_with_debugging: {
+                base: 'Chrome',
+                chromeDataDir: path.resolve(__dirname, '.chrome')
+            }
         },
 
-        reporters: ['spec','coverage-istanbul'],
+        // coverageIstanbulReporter: {
+        //     reports: ['text-summary','json-summary','html', 'lcov'],
+        //     dir: './test/fixtures/outputs'
+        // },
+
+        junitReporter: {
+            outputDir: process.env.JUNIT_REPORT_PATH,
+            outputFile: process.env.JUNIT_REPORT_NAME,
+            useBrowserName: false
+        },
+
+        mochaReporter: {
+            showDiff: true
+        },
+
+        reporters: ['mocha','junit'],
         port: 9876,
         colors: true,
-        logLevel: config.LOG_INFO,
-        browsers: ['PhantomJS'],
+        logLevel: config.LOG_DISABLE,
+        browsers: ['Chrome'],
+        //browsers: ['PhantomJS'],
         singleRun: !argv.watch,
     });
 };

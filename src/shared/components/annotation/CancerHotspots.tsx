@@ -1,9 +1,11 @@
 import * as React from 'react';
+import {Circle} from "better-react-spinkit";
 import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
 import annotationStyles from "./styles/annotation.module.scss";
 import hotspotStyles from "./styles/cancerHotspots.module.scss";
 
 export interface ICancerHotspotsProps {
+    status: "pending" | "error" | "complete";
     isHotspot: boolean;
     is3dHotspot: boolean;
 }
@@ -89,7 +91,7 @@ export default class CancerHotspots extends React.Component<ICancerHotspotsProps
     public static link(isHotspot:boolean, is3dHotspot:boolean)
     {
         const recurrentLink = isHotspot ? (
-                <a href="http://cancerhotspots.org/" target="_blank">
+                <a href="http://www.cancerhotspots.org/" target="_blank">
                     http://cancerhotspots.org/
                 </a>
             ) : "";
@@ -97,7 +99,7 @@ export default class CancerHotspots extends React.Component<ICancerHotspotsProps
         const maybeAnd = isHotspot && is3dHotspot ? "and" : "";
 
         const clusteredLink = is3dHotspot ? (
-                <a href="http://3dhotspots.org/" target="_blank">
+                <a href="http://www.3dhotspots.org/" target="_blank">
                     http://3dhotspots.org/
                 </a>
             ) : "";
@@ -115,6 +117,13 @@ export default class CancerHotspots extends React.Component<ICancerHotspotsProps
         this.state = {};
     }
 
+    public loaderIcon()
+    {
+        return (
+            <Circle size={18} scaleEnd={0.5} scaleStart={0.2} color="#aaa" className="pull-left"/>
+        );
+    }
+
     public render()
     {
         const {isHotspot, is3dHotspot} = this.props;
@@ -123,7 +132,10 @@ export default class CancerHotspots extends React.Component<ICancerHotspotsProps
             <span className={`${annotationStyles["annotation-item"]}`} />
         );
 
-        if (isHotspot || is3dHotspot)
+        if (this.props.status === "pending") {
+            hotspotContent = this.loaderIcon();
+        }
+        else if (isHotspot || is3dHotspot)
         {
             const hotspotsImgWidth:number = 14;
             let hotspotsImgHeight:number = 14;

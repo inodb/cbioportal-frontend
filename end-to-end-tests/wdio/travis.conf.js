@@ -1,5 +1,11 @@
 var browserstack = require('browserstack-local');
 
+var path = require('path');
+var VisualRegressionCompare = require('wdio-visual-regression-service/compare');
+
+var getScreenshotName = require('./getScreenshotName');
+const localIdentifier = `foobar_${Date.now()}`
+
 exports.config = {
     //
     // ==================
@@ -11,7 +17,7 @@ exports.config = {
     // directory is where your package.json resides, so `wdio` will be called from there.
     //
     specs: [
-        './specs/**/*.js'
+        './specs/**/*.js' //'./specs/**/screenshot.spec.js'
     ],
     // Patterns to exclude.
     exclude: [
@@ -44,10 +50,15 @@ exports.config = {
         // grid with only 5 firefox instances available you can make sure that not more than
         // 5 instances get started at a time.
         maxInstances: 5,
-        //
-        browserName: 'chrome',
+        'os': 'OS X',
+        'os_version': 'Sierra',
+        'browser': 'Chrome',
+        'browser_version': '63.0',
+        'resolution': '1600x1200',
         build: 'webdriver-browserstack',
-        'browserstack.local': true
+        'browserstack.local': true,
+        'browserstack.localIdentifier': localIdentifier,
+        'browserstack.networkLogs':true
     }],
     //
     // ===================
@@ -109,7 +120,20 @@ exports.config = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: ['browserstack'],
+    services: ['browserstack', 'visual-regression'],
+
+    visualRegression: {
+        compare: new VisualRegressionCompare.LocalCompare({
+            referenceName: getScreenshotName(path.join(process.cwd(), 'screenshots/reference')),
+            screenshotName: getScreenshotName(path.join(process.cwd(), 'screenshots/screen')),
+            diffName: getScreenshotName(path.join(process.cwd(), 'screenshots/diff')),
+            misMatchTolerance:0.1
+        }),
+        viewportChangePause: 300,
+        viewports: [{ width: 1600, height: 1000 }],
+        orientations: ['landscape', 'portrait'],
+    },
+
     user: process.env.BROWSERSTACK_USERNAME,
     key: process.env.BROWSERSTACK_ACCESS_KEY,
     // Framework you want to run your specs with.
@@ -123,7 +147,15 @@ exports.config = {
     // Test reporter for stdout.
     // The only one supported by default is 'dot'
     // see also: http://webdriver.io/guide/testrunner/reporters.html
-    reporters: ['spec'],
+    reporters: ['spec', 'junit'],
+    reporterOptions: {
+        junit: {
+            outputDir: process.env.JUNIT_REPORT_PATH,
+            outputFileFormat: function(opts) { // optional
+                return `results-${opts.cid}.${opts.capabilities}.xml`
+            }
+        }
+    },
     //
     // Options to be passed to Mocha.
     // See the full list at http://mochajs.org/
@@ -240,22 +272,22 @@ exports.config = {
      */
     // onComplete: function(exitCode) {
     // }
-	// Code to start browserstack local before start of test
-	onPrepare: function (config, capabilities) {
-	  console.log("Connecting local");
-	  return new Promise(function(resolve, reject){
-	    exports.bs_local = new browserstack.Local();
-	    exports.bs_local.start({'key': exports.config.key }, function(error) {
-	  	if (error) return reject(error);
-	  	console.log('Connected. Now testing...');
+    // Code to start browserstack local before start of test
+    onPrepare: function (config, capabilities) {
+        console.log("Connecting local");
+        return new Promise(function(resolve, reject){
+            exports.bs_local = new browserstack.Local();
+            exports.bs_local.start({'key': exports.config.key, localIdentifier }, function(error) {
+                if (error) return reject(error);
+                console.log('Connected. Now testing...');
 
-	  	resolve();
-	    });
-	  });
-	},
+                resolve();
+            });
+        });
+    },
 
-	// Code to stop browserstack local after end of test
-	onComplete: function (capabilties, specs) {
-	  exports.bs_local.stop(function() {});
-	}
+    // Code to stop browserstack local after end of test
+    onComplete: function (capabilties, specs) {
+        exports.bs_local.stop(function() {});
+    }
 }

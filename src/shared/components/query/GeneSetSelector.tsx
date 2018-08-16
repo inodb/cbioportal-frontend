@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as styles_any from './styles.module.scss';
+import * as styles_any from './styles/styles.module.scss';
 import {Modal} from 'react-bootstrap';
 import ReactSelect from 'react-select';
 import {observer} from "mobx-react";
@@ -80,7 +80,7 @@ export default class GeneSetSelector extends QueryStoreComponent<GeneSetSelector
 							   secondaryComponent={<a target="_blank" href={getOncoQueryDocUrl()}>Advanced: Onco Query Language (OQL)</a>}
 							   promises={[this.store.mutSigForSingleStudy, this.store.gisticForSingleStudy, this.store.genes]}
 				>
-					Enter Gene Set:
+					Enter Genes:
 				</SectionHeader>
 
 				<FlexCol overflow>

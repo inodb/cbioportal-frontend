@@ -19,7 +19,7 @@ import {buildCivicEntry, getCivicCNAVariants} from "shared/lib/CivicUtils";
 export default class AnnotationColumnFormatter
 {
     public static getData(copyNumberData:DiscreteCopyNumberData[]|undefined,
-                          oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean},
+                          oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean}|Error,
                           oncoKbData?: IOncoKbDataWrapper,
                           civicGenes?: ICivicGeneDataWrapper,
                           civicVariants?: ICivicVariantDataWrapper)
@@ -31,10 +31,20 @@ export default class AnnotationColumnFormatter
             let oncoKbIndicator: IndicatorQueryResp|undefined = undefined;
             let oncoKbStatus:IAnnotation["oncoKbStatus"] = "complete";
             let hugoGeneSymbol = copyNumberData[0].gene.hugoGeneSymbol;
-            const oncoKbGeneExist = !!oncoKbAnnotatedGenes[copyNumberData[0].entrezGeneId];
+            const oncoKbGeneExist = !(oncoKbAnnotatedGenes instanceof Error) && !!oncoKbAnnotatedGenes[copyNumberData[0].entrezGeneId];
 
-            if (oncoKbGeneExist) {
-                if (oncoKbData && oncoKbData.result && oncoKbData.status === "complete") {
+            // oncoKbData may exist but it might be an instance of Error, in that case we flag the status as error
+            if (oncoKbData && oncoKbData.result instanceof Error) {
+                oncoKbStatus = "error";
+            }
+            else if (oncoKbGeneExist) {
+                // actually, oncoKbData.result shouldn't be an instance of Error in this case (we already check it above),
+                // but we need to check it again in order to avoid TS errors/warnings
+                if (oncoKbData &&
+                    oncoKbData.result &&
+                    !(oncoKbData.result instanceof Error) &&
+                    oncoKbData.status === "complete")
+                {
                     oncoKbIndicator = AnnotationColumnFormatter.getIndicatorData(copyNumberData, oncoKbData.result);
                 }
                 oncoKbStatus = oncoKbData ? oncoKbData.status : "pending";
@@ -53,6 +63,7 @@ export default class AnnotationColumnFormatter
                 hasCivicVariants: civicGenes && civicGenes.result && civicVariants && civicVariants.result ?
                     AnnotationColumnFormatter.hasCivicVariants(copyNumberData, civicGenes.result, civicVariants.result) : true,
                 myCancerGenomeLinks: [],
+                hotspotStatus: "complete",
                 isHotspot: false,
                 is3dHotspot: false
             };
@@ -110,12 +121,12 @@ export default class AnnotationColumnFormatter
 
     public static getIndicatorData(copyNumberData:DiscreteCopyNumberData[], oncoKbData:IOncoKbData): IndicatorQueryResp|undefined
     {
-        if (oncoKbData.sampleToTumorMap === null || oncoKbData.indicatorMap === null) {
+        if (oncoKbData.uniqueSampleKeyToTumorType === null || oncoKbData.indicatorMap === null) {
             return undefined;
         }
 
         const id = generateQueryVariantId(copyNumberData[0].gene.entrezGeneId,
-            oncoKbData.sampleToTumorMap[copyNumberData[0].sampleId],
+            oncoKbData.uniqueSampleKeyToTumorType[copyNumberData[0].uniqueSampleKey],
             getAlterationString(copyNumberData[0].alteration));
 
         return oncoKbData.indicatorMap[id];
@@ -124,14 +135,14 @@ export default class AnnotationColumnFormatter
     public static getEvidenceQuery(copyNumberData:DiscreteCopyNumberData[], oncoKbData:IOncoKbData): Query|undefined
     {
         // return null in case sampleToTumorMap is null
-        return oncoKbData.sampleToTumorMap ? generateQueryVariant(copyNumberData[0].gene.entrezGeneId,
-            oncoKbData.sampleToTumorMap[copyNumberData[0].sampleId],
+        return oncoKbData.uniqueSampleKeyToTumorType ? generateQueryVariant(copyNumberData[0].gene.entrezGeneId,
+            oncoKbData.uniqueSampleKeyToTumorType[copyNumberData[0].uniqueSampleKey],
             getAlterationString(copyNumberData[0].alteration)
         ) : undefined;
     }
 
     public static sortValue(data:DiscreteCopyNumberData[],
-                            oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean},
+                            oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean}|Error,
                             oncoKbData?: IOncoKbDataWrapper,
                             civicGenes?: ICivicGeneDataWrapper,
                             civicVariants?: ICivicVariantDataWrapper):number[] {
@@ -147,7 +158,10 @@ export default class AnnotationColumnFormatter
 
         let evidenceQuery:Query|undefined;
 
-        if (columnProps.oncoKbData && columnProps.oncoKbData.result) {
+        if (columnProps.oncoKbData &&
+            columnProps.oncoKbData.result &&
+            !(columnProps.oncoKbData.result instanceof Error))
+        {
             evidenceQuery = this.getEvidenceQuery(data, columnProps.oncoKbData.result);
         }
 

@@ -13,9 +13,10 @@ import {Clock} from "lolex";
 import {PaginationControls, SHOW_ALL_PAGE_SIZE} from "../paginationControls/PaginationControls";
 import {Button, FormControl, Checkbox} from 'react-bootstrap';
 import {ColumnVisibilityControls} from "../columnVisibilityControls/ColumnVisibilityControls";
-import {SimpleMobXApplicationDataStore} from "../../lib/IMobXApplicationDataStore";
+import {SimpleLazyMobXTableApplicationDataStore} from "../../lib/ILazyMobXTableApplicationDataStore";
 import cloneJSXWithoutKeyAndRef from "shared/lib/cloneJSXWithoutKeyAndRef";
 import {maxPage} from "./utils";
+import _ from "lodash";
 
 expect.extend(expectJSX);
 chai.use(chaiEnzyme());
@@ -23,7 +24,7 @@ chai.use(chaiEnzyme());
 class Table extends LazyMobXTable<any> {
 }
 
-class HighlightingDataStore extends SimpleMobXApplicationDataStore<any> {
+class HighlightingDataStore extends SimpleLazyMobXTableApplicationDataStore<any> {
     constructor(data:any[]) {
         super(data);
         this.dataHighlighter = (d:any)=>(d.numList[1] === null);
@@ -913,11 +914,20 @@ describe('LazyMobXTable', ()=>{
             const store:HighlightingDataStore = new HighlightingDataStore(data);
             let table = mount(<Table columns={columns} dataStore={store}/>);
             let rows = getSimpleTableRows(table);
-            assert.isFalse(rows.at(0).hasClass("highlight"), "row 0 not highlighted");
-            assert.isTrue(rows.at(1).hasClass("highlight"), "row 1 highlighted");
-            assert.isFalse(rows.at(2).hasClass("highlight"), "row 2 not highlighted");
-            assert.isTrue(rows.at(3).hasClass("highlight"), "row 3 highlighted");
-            assert.isTrue(rows.at(4).hasClass("highlight"), "row 4 highlighted");
+            assert.isFalse(rows.at(0).hasClass("highlighted"), "row 0 not highlighted");
+            assert.isTrue(rows.at(1).hasClass("highlighted"), "row 1 highlighted");
+            assert.isFalse(rows.at(2).hasClass("highlighted"), "row 2 not highlighted");
+            assert.isTrue(rows.at(3).hasClass("highlighted"), "row 3 highlighted");
+            assert.isTrue(rows.at(4).hasClass("highlighted"), "row 4 highlighted");
+        });
+        it("onRowClick prop fires w associated datum when the row is clicked", ()=>{
+            let onRowClick = sinon.spy((fd:any)=>{});
+            let tmpColumns = _.cloneDeep(columns);
+            tmpColumns[0].render = (d:any)=>(<span id={`name-cell-${d.name}`}>{d.name}</span>);
+            let table = mount(<Table columns={tmpColumns} data={data} onRowClick={onRowClick}/>);
+            table.find("#name-cell-3").simulate('click');
+            assert.isTrue(onRowClick.calledOnce);
+            assert.deepEqual(onRowClick.args[0][0], datum3);
         });
     });
     describe('column visibility', ()=>{
@@ -1059,22 +1069,33 @@ describe('LazyMobXTable', ()=>{
             clock.tick(1000);
             assert.equal(table.find(SimpleTable).props().rows.length, data.length);
         });
+        it("keeps filtering intact even after re-rendering", ()=>{
+            const filterString = "asdfj";
+            const table = mount(<Table columns={columns} data={data}/>);
+            simulateTableSearchInput(table, filterString);
+            clock.tick(1000);
+            assert.equal(table.find(SimpleTable).props().rows.length, 1);
+
+            // force re-render
+            table.update();
+            assert.equal(table.find(SimpleTable).props().rows.length, 1);
+        });
     });
     describe('downloading data', ()=>{
-        it("gives just the column names when theres no data in the table", ()=>{
+        it("gives just the column names when theres no data in the table", async ()=>{
             let table = mount(<Table columns={columns} data={[]}/>);
-            assert.deepEqual((table.instance() as LazyMobXTable<any>).getDownloadData(),
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
                 "Name\tNumber\tString\tNumber List\tInitially invisible column\tInitially invisible column with no download\tString without filter function\r\n");
         });
-        it("gives one row of data when theres one row. data given for every column, including hidden, and without download def'n. if no data, gives empty string for that cell.", ()=>{
+        it("gives one row of data when theres one row. data given for every column, including hidden, and without download def'n. if no data, gives empty string for that cell.", async ()=>{
             let table = mount(<Table columns={columns} data={[data[0]]}/>);
-            assert.deepEqual((table.instance() as LazyMobXTable<any>).getDownloadData(),
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
                 "Name\tNumber\tString\tNumber List\tInitially invisible column\tInitially invisible column with no download\tString without filter function\r\n"+
                 "0\t0\tasdfj\t\t0HELLO123456\t\t\r\n");
         });
-        it("gives data for all rows. data given for every column, including hidden, and without download def'n. if no data, gives empty string for that cell", ()=>{
+        it("gives data for all rows. data given for every column, including hidden, and without download def'n. if no data, gives empty string for that cell", async ()=>{
             let table = mount(<Table columns={columns} data={data}/>)
-            assert.deepEqual((table.instance() as LazyMobXTable<any>).getDownloadData(),
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
                 "Name\tNumber\tString\tNumber List\tInitially invisible column\tInitially invisible column with no download\tString without filter function\r\n"+
                 "0\t0\tasdfj\t\t0HELLO123456\t\t\r\n"+
                 "1\t6\tkdfjpo\t\t1HELLO123456\t\t\r\n"+
@@ -1082,10 +1103,10 @@ describe('LazyMobXTable', ()=>{
                 "3\t-1\tzijxcpo\t\t3HELLO123456\t\t\r\n"+
                 "4\t90\tzkzxc\t\t4HELLO123456\t\t\r\n");
         });
-        it("gives data back in sorted order according to initially selected sort column and direction", ()=>{
+        it("gives data back in sorted order according to initially selected sort column and direction", async ()=>{
             let table = mount(<Table columns={columns} data={data} initialSortColumn="Number" initialSortDirection="asc"/>);
 
-            assert.deepEqual((table.instance() as LazyMobXTable<any>).getDownloadData(),
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
                 "Name\tNumber\tString\tNumber List\tInitially invisible column\tInitially invisible column with no download\tString without filter function\r\n"+
                 "3\t-1\tzijxcpo\t\t3HELLO123456\t\t\r\n"+
                 "0\t0\tasdfj\t\t0HELLO123456\t\t\r\n"+
@@ -1094,15 +1115,31 @@ describe('LazyMobXTable', ()=>{
                 "2\tnull\tnull\t\t2HELLO123456\t\t\r\n");
         });
         
-        it("gives data for data with multiple elements", ()=>{
+        it("gives data for data with multiple elements", async ()=>{
             let table = mount(<Table columns={columns} data={multiData}/>)
-            assert.deepEqual((table.instance() as LazyMobXTable<any>).getDownloadData(),
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
                 "Name\tNumber\tString\tNumber List\tInitially invisible column\tInitially invisible column with no download\tString without filter function\r\n"+
                 "0\t0\tasdfj\t\t0HELLO123456\t\t\r\n"+
                 "1\t6\tkdfjpo\t\t1HELLO123456\t\t\r\n"+
                 "2\tnull\tnull\t\t2HELLO123456\t\t\r\n"+
                 "3\t-1\tzijxcpo\t\t3HELLO123456\t\t\r\n"+
                 "4\t90\tzkzxc\t\t4HELLO123456\t\t\r\n");
+        });
+
+        it("gives the correct column names when headerDownload is defined", async () => {
+            const cols = [{
+                name: "Myth",
+                render:(d:any)=><span/>
+            },{
+                name: "Science",
+                render:(d:any)=><span/>,
+                headerDownload:(name:string) => `${name}: Ruining everything since 1543`
+            }];
+
+            const table = mount(<Table columns={cols} data={[]}/>);
+
+            assert.deepEqual((await (table.instance() as LazyMobXTable<any>).getDownloadDataPromise()).text,
+                "Myth\tScience: Ruining everything since 1543\r\n");
         });
     });
     describe('pagination', ()=>{

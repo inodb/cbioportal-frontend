@@ -1,0 +1,15 @@
+.e2etest {
+  input:focus, select:focus {
+    outline:none !important;
+    box-shadow:none !important;
+    border-color: $borderColor !important;
+  }
+
+  .simple-table tbody>tr:nth-of-type(odd).clickable:hover {
+    background-color: #F9F9F9 !important;
+  }
+
+  .simple-table tbody>tr:nth-of-type(even).clickable:hover {
+    background-color: #FFFFFF !important;
+  }
+}

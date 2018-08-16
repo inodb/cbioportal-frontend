@@ -2,17 +2,18 @@ import * as React from 'react';
 import {observer} from "mobx-react";
 import {MSKTabs, MSKTab} from "shared/components/MSKTabs/MSKTabs";
 import {ResultsViewPageStore} from "../ResultsViewPageStore";
-import MutationMapper from "./MutationMapper";
+import ResultsViewMutationMapper from "./ResultsViewMutationMapper";
 import {observable, computed} from "mobx";
 import AppConfig from 'appConfig';
 import "./mutations.scss";
 import {filterCBioPortalWebServiceData} from '../../../shared/lib/oql/oqlfilter';
 import accessors from '../../../shared/lib/oql/accessors';
 import Loader from "../../../shared/components/loadingIndicator/LoadingIndicator";
+import OqlStatusBanner from "../../../shared/components/oqlStatusBanner/OqlStatusBanner";
+import autobind from "autobind-decorator";
 
 export interface IMutationsPageProps {
     routing?: any;
-    genes: string[];
     store: ResultsViewPageStore;
 }
 
@@ -24,9 +25,13 @@ export default class Mutations extends React.Component<IMutationsPageProps, {}>
     constructor(props: IMutationsPageProps) {
         super(props);
         this.handleTabChange.bind(this);
-        this.mutationsGeneTab = props.genes[0];
+        this.mutationsGeneTab = this.props.store.hugoGeneSymbols![0];
     }
 
+    @autobind
+    private onToggleOql() {
+        this.props.store.mutationsTabShouldUseOql = !this.props.store.mutationsTabShouldUseOql;
+    }
 
     public render() {
         // use routing if available, if not fall back to the observable variable
@@ -35,18 +40,27 @@ export default class Mutations extends React.Component<IMutationsPageProps, {}>
 
         return (
             <div>
+                <OqlStatusBanner
+                    className="mutations-oql-status-banner"
+                    store={this.props.store}
+                    tabReflectsOql={this.props.store.mutationsTabShouldUseOql}
+                    isUnaffected={!this.props.store.queryContainsMutationOql}
+                    style={{marginTop:-2}}
+                    onToggle={this.onToggleOql}
+                />
                 <Loader isLoading={this.props.store.mutationMapperStores.isPending} />
                 {(this.props.store.mutationMapperStores.isComplete) && (
                     <MSKTabs
                         id="mutationsPageTabs"
                         activeTabId={activeTabId}
                         onTabClick={(id:string) => this.handleTabChange(id)}
-                        className="secondaryTabs resultsPageMutationsGeneTabs"
+                        className="pillTabs resultsPageMutationsGeneTabs"
                         enablePagination={true}
-                        arrowStyle={{'line-height':.8}}
+                        arrowStyle={{'line-height': 0.8}}
                         tabButtonStyle="pills"
+                        unmountOnHide={true}
                     >
-                        {this.generateTabs(this.props.genes)}
+                        {this.generateTabs(this.props.store.hugoGeneSymbols!)}
                     </MSKTabs>
                 )}
             </div>
@@ -64,7 +78,7 @@ export default class Mutations extends React.Component<IMutationsPageProps, {}>
             {
                 tabs.push(
                     <MSKTab key={gene} id={gene} linkText={gene}>
-                        <MutationMapper
+                        <ResultsViewMutationMapper
                             store={mutationMapperStore}
                             discreteCNACache={this.props.store.discreteCNACache}
                             genomeNexusEnrichmentCache={this.props.store.genomeNexusEnrichmentCache}

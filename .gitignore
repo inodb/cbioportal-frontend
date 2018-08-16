@@ -15,3 +15,17 @@ common-dist/
 .sass-cache
 frontend-cbioportal.iml
 test/
+.classpath
+.project
+.settings
+.vscode
+node
+bin
+target
+end-to-end-tests/screenshots/diff
+end-to-end-tests/screenshots/screen
+wdio/browserstack.txt
+env/custom.sh
+image-compare/errors.js
+errorshots/
+TESTS.xml

@@ -8,7 +8,7 @@ import Collapse from "react-collapse";
 import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 import {HitZone} from "../HitZone";
 import ProteinChain from "./ProteinChain";
-import {MutationMapperStore} from "../../../pages/resultsView/mutation/MutationMapperStore";
+import MutationMapperStore from "shared/components/mutationMapper/MutationMapperStore";
 import {ALIGNMENT_GAP, IPdbChain} from "../../model/Pdb";
 import PdbHeaderCache from "../../cache/PdbHeaderCache";
 import PdbChainInfo from "../PdbChainInfo";
@@ -183,7 +183,8 @@ export default class ProteinChainPanel extends React.Component<ProteinChainPanel
     }
 
     @computed get proteinLength() {
-        return Math.max(this.props.store.pfamGeneData.result.length, 1);
+        const proteinLength = (this.props.store.canonicalTranscript.result && this.props.store.canonicalTranscript.result.proteinLength) || 0;
+        return Math.max(proteinLength, 1);
     }
 
     @computed get tooltipVisible() {

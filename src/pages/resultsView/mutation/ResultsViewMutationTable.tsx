@@ -21,6 +21,7 @@ export default class ResultsViewMutationTable extends MutationTable<IResultsView
     {
         ...MutationTable.defaultProps,
         columns: [
+            MutationTableColumnType.STUDY,
             MutationTableColumnType.SAMPLE_ID,
             MutationTableColumnType.COPY_NUM,
             MutationTableColumnType.ANNOTATION,
@@ -47,17 +48,22 @@ export default class ResultsViewMutationTable extends MutationTable<IResultsView
         ]
     };
 
+    componentWillUpdate(nextProps:IResultsViewMutationTableProps) {
+        this._columns[MutationTableColumnType.STUDY].visible = !!(nextProps.studyIdToStudy && (Object.keys(nextProps.studyIdToStudy).length > 1));
+    }
+
     protected generateColumns() {
         super.generateColumns();
 
         // override default visibility for some columns
         this._columns[MutationTableColumnType.CANCER_TYPE].visible = CancerTypeColumnFormatter.isVisible(
             this.props.dataStore ? this.props.dataStore.allData : this.props.data,
-            this.props.sampleIdToTumorType);
+            this.props.uniqueSampleKeyToTumorType);
         this._columns[MutationTableColumnType.TUMOR_ALLELE_FREQ].visible = TumorAlleleFreqColumnFormatter.isVisible(
             this.props.dataStore ? this.props.dataStore.allData : this.props.data);
 
         // order columns
+        this._columns[MutationTableColumnType.STUDY].order = 0;
         this._columns[MutationTableColumnType.SAMPLE_ID].order = 10;
         this._columns[MutationTableColumnType.CANCER_TYPE].order = 15;
         this._columns[MutationTableColumnType.PROTEIN_CHANGE].order = 20;
@@ -84,7 +90,7 @@ export default class ResultsViewMutationTable extends MutationTable<IResultsView
 
         // exclude
         this._columns[MutationTableColumnType.CANCER_TYPE].shouldExclude = ()=>{
-            return !this.props.sampleIdToTumorType;
+            return !this.props.uniqueSampleKeyToTumorType;
         };
         this._columns[MutationTableColumnType.NUM_MUTATIONS].shouldExclude = ()=>{
             return !this.props.mutationCountCache;
