@@ -14,14 +14,10 @@
 *txt
 *gif
 *pegjs
-
+*template
+*.ejs
 src/shared/api/generated/**
 packages/**/dist/**
 yarn.lock
-
 .prettierignore
-
 .DS_Store
-
-
-
