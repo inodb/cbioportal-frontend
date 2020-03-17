@@ -434,6 +434,25 @@ export class PatientViewPageStore {
         []
     );
 
+    readonly spectrumMiraUrl = remoteData(
+        {
+            await: () => [this.clinicalDataPatient],
+            invoke: () => {
+                const investigatorClinicalData = 
+                    this.studyId === 'msk_spectrum' &&
+                    this.clinicalDataPatient.result &&
+                    this.clinicalDataPatient.result.filter(
+                        (cd => cd.clinicalAttributeId === "INVESTIGATOR_PATIENT_ID")
+                );
+                return Promise.resolve(
+                    investigatorClinicalData &&
+                    investigatorClinicalData.length === 1 &&
+                    `//localhost:5000/patient/${investigatorClinicalData[0].value}`
+                );
+            }
+        }
+    );
+
     readonly pathologyReport = remoteData(
         {
             await: () => [this.derivedPatientId],
