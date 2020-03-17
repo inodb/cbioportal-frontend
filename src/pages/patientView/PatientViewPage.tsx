@@ -1387,6 +1387,30 @@ export default class PatientViewPage extends React.Component<
                                         </MSKTab>
                                     )}
 
+                                {this.patientViewPageStore.spectrumMiraUrl.isComplete &&
+                                    this.patientViewPageStore.spectrumMiraUrl.result &&
+                                    (
+                                        <MSKTab
+                                            key={6}
+                                            id={
+                                                PatientViewPageTabs.MSKSpectrumMira
+                                            }
+                                            linkText="Single Cell (Mira)"
+                                            unmountOnHide={false}
+                                        >
+                                            <div>
+                                                <IFrameLoader
+                                                    height={
+                                                        WindowStore.size
+                                                            .height - 220
+                                                    }
+                                                    url={`${this.patientViewPageStore.spectrumMiraUrl.result}`}
+                                                />
+                                            </div>
+                                        </MSKTab>
+                                    )
+                                }
+
                                 {this.shouldShowTrialMatch(
                                     this.patientViewPageStore
                                 ) && (
