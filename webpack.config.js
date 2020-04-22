@@ -473,11 +473,11 @@ if (isDev || isTest) {
     });
 
     config.devServer.port = devPort;
-    //config.devServer.hostname = devHost;
+    config.devServer.host = devHost;
 
     // force hot module reloader to hit absolute path so it can load
     // from dev server
-    config.output.publicPath = '//localhost:3000/';
+    config.output.publicPath = `//${devHost}:${devPort}/`;
 } else {
     (config.devtool = sourceMap), (config.output.publicPath = '/');
 
