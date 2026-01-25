@@ -393,14 +393,24 @@ var config = {
                 warnings: false,
             },
         },
-        server: 'https',
-        host: 'localhost',
+        server: process.env.HTTPS === 'true' ? 'https' : 'http',
+        host: '0.0.0.0',
         headers: { 'Access-Control-Allow-Origin': '*' },
         allowedHosts: 'all',
         devMiddleware: {
             publicPath: '/',
             stats: 'errors-only',
         },
+        proxy: process.env.CBIOPORTAL_URL
+            ? [
+                  {
+                      context: ['/api', '/config_service', '/proxy'],
+                      target: process.env.CBIOPORTAL_URL,
+                      changeOrigin: true,
+                      secure: true,
+                  },
+              ]
+            : undefined,
     },
 };
 
@@ -472,17 +482,20 @@ if (isDev || isTest) {
         'shared/Empty.tsx'
     );
 
-    config.plugins.push(
-        new ForkTsCheckerWebpackPlugin({
-            typescript: {
-                configOverwrite: {
-                    compilerOptions: {
-                        skipLibCheck: true,
+    // TypeScript checker can be disabled via DISABLE_TYPE_CHECK=true for lower memory usage
+    if (process.env.DISABLE_TYPE_CHECK !== 'true') {
+        config.plugins.push(
+            new ForkTsCheckerWebpackPlugin({
+                typescript: {
+                    configOverwrite: {
+                        compilerOptions: {
+                            skipLibCheck: true,
+                        },
                     },
                 },
-            },
-        })
-    );
+            })
+        );
+    }
 
     // css modules for any scss matching test
     config.module.rules.push({
