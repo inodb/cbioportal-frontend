@@ -180,6 +180,7 @@ export enum SpecialChartsUniqueKeyEnum {
     FRACTION_GENOME_ALTERED = 'FRACTION_GENOME_ALTERED',
     GENOMIC_PROFILES_SAMPLE_COUNT = 'GENOMIC_PROFILES_SAMPLE_COUNT',
     CASE_LISTS_SAMPLE_COUNT = 'CASE_LISTS_SAMPLE_COUNT',
+    O2GL_DEMO = 'O2GL_DEMO',
     PATIENT_TREATMENTS = 'PATIENT_TREATMENTS',
     PATIENT_TREATMENT_GROUPS = 'PATIENT_TREATMENT_GROUPS',
     PATIENT_TREATMENT_TARGET = 'PATIENT_TREATMENT_TARGET',
@@ -251,6 +252,15 @@ export type StudyViewFilterWithGenericAssaySelectionFilters = StudyViewFilter & 
 
 export type GenomicDataCountWithSampleUniqueKeys = GenomicDataCount & {
     sampleUniqueKeys: string[];
+};
+
+export type O2glDemoRow = {
+    gene: string;
+    oncotree: string;
+    alteration: string;
+    count: number;
+    freq: number;
+    uniqueKey: string;
 };
 
 export type RectangleBounds = {
@@ -2990,6 +3000,7 @@ export function getChartSettingsMap(
         } as any;
         switch (chartType) {
             case ChartTypeEnum.MUTATED_GENES_TABLE:
+            case ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE:
                 chartSetting.filterByCancerGenes = filterMutatedGenesTableByCancerGenes;
                 break;
             case ChartTypeEnum.STRUCTURAL_VARIANT_GENES_TABLE:
@@ -3919,6 +3930,7 @@ export const FilterIconMessage: React.FunctionComponent<{
     );
     const isMutationType =
         chartType === ChartTypeEnum.MUTATED_GENES_TABLE ||
+        chartType === ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE ||
         chartType === ChartTypeEnum.STRUCTURAL_VARIANT_GENES_TABLE ||
         chartType === ChartTypeEnum.STRUCTURAL_VARIANTS_TABLE;
     if (
@@ -5369,7 +5381,8 @@ export function getChartMetaSet(
     shouldDisplaySampleTreatmentGroups?: boolean,
     shouldDisplayPatientTreatmentGroups?: boolean,
     shouldDisplaySampleTreatmentTarget?: boolean,
-    shouldDisplayPatientTreatmentTarget?: boolean
+    shouldDisplayPatientTreatmentTarget?: boolean,
+    shouldDisplayO2glDemo?: boolean
 ) {
     const customChartMetaSet = _.fromPairs(customCharts.toJSON());
     // if no molecular profiles, genomic profiles sample count chart will be empty so remove it from set
@@ -5566,6 +5579,20 @@ export function getChartMetaSet(
         };
     }
 
+    if (shouldDisplayO2glDemo) {
+        chartMetaSet[SpecialChartsUniqueKeyEnum.O2GL_DEMO] = {
+            uniqueKey: SpecialChartsUniqueKeyEnum.O2GL_DEMO,
+            dataType: ChartMetaDataTypeEnum.CLINICAL,
+            patientAttribute: false,
+            displayName: 'O2GL-DEMO',
+            priority: getDefaultPriorityByUniqueKey(
+                SpecialChartsUniqueKeyEnum.O2GL_DEMO
+            ),
+            renderWhenDataChange: false,
+            description: '',
+        };
+    }
+
     if (!_.isEmpty(mutationProfiles)) {
         const uniqueKey = getUniqueKeyFromMolecularProfileIds(
             mutationProfiles.map(
@@ -5579,6 +5606,21 @@ export function getChartMetaSet(
             displayName: 'Mutated Genes',
             priority: getDefaultPriorityByUniqueKey(
                 ChartTypeEnum.MUTATED_GENES_TABLE
+            ),
+            renderWhenDataChange: false,
+            description: '',
+        };
+    }
+
+    if (!_.isEmpty(mutationProfiles)) {
+        const uniqueKey = ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE;
+        chartMetaSet[uniqueKey] = {
+            uniqueKey,
+            dataType: ChartMetaDataTypeEnum.GENOMIC,
+            patientAttribute: false,
+            displayName: 'ONCOTREE2GENES_LLM_TABLE',
+            priority: getDefaultPriorityByUniqueKey(
+                ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE
             ),
             renderWhenDataChange: false,
             description: '',
