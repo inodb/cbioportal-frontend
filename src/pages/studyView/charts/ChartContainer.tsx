@@ -174,6 +174,10 @@ export interface IChartContainerProps {
     isNewlyAdded: (uniqueKey: string) => boolean;
     cancerGeneFilterEnabled: boolean;
     filterByCancerGenes?: boolean;
+    o2glFilterEnabled?: boolean;
+    filterByO2gl?: boolean;
+    onChangeO2glFilter?: (filtered: boolean) => void;
+    o2glGenes?: string[];
     alterationFilterEnabled: boolean;
     filterAlterations?: boolean;
     onChangeCancerGeneFilter?: (filtered: boolean) => void;
@@ -725,7 +729,6 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                     />
                 );
             }
-            case ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE:
             case ChartTypeEnum.MUTATED_GENES_TABLE: {
                 return () => {
                     const numColumn: MultiSelectionTableColumn = {
@@ -776,6 +779,10 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeCancerGeneFilter={
                                 this.props.onChangeCancerGeneFilter!
                             }
+                            o2glFilterEnabled={this.props.o2glFilterEnabled}
+                            filterByO2gl={this.props.filterByO2gl}
+                            onChangeO2glFilter={this.props.onChangeO2glFilter}
+                            o2glGenes={this.props.o2glGenes}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -922,6 +929,10 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeCancerGeneFilter={
                                 this.props.onChangeCancerGeneFilter!
                             }
+                            o2glFilterEnabled={this.props.o2glFilterEnabled}
+                            filterByO2gl={this.props.filterByO2gl}
+                            onChangeO2glFilter={this.props.onChangeO2glFilter}
+                            o2glGenes={this.props.o2glGenes}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -1100,6 +1111,10 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeCancerGeneFilter={
                                 this.props.onChangeCancerGeneFilter!
                             }
+                            o2glFilterEnabled={this.props.o2glFilterEnabled}
+                            filterByO2gl={this.props.filterByO2gl}
+                            onChangeO2glFilter={this.props.onChangeO2glFilter}
+                            o2glGenes={this.props.o2glGenes}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }

@@ -2990,7 +2990,6 @@ export function getChartSettingsMap(
         } as any;
         switch (chartType) {
             case ChartTypeEnum.MUTATED_GENES_TABLE:
-            case ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE:
                 chartSetting.filterByCancerGenes = filterMutatedGenesTableByCancerGenes;
                 break;
             case ChartTypeEnum.STRUCTURAL_VARIANT_GENES_TABLE:
@@ -3920,7 +3919,6 @@ export const FilterIconMessage: React.FunctionComponent<{
     );
     const isMutationType =
         chartType === ChartTypeEnum.MUTATED_GENES_TABLE ||
-        chartType === ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE ||
         chartType === ChartTypeEnum.STRUCTURAL_VARIANT_GENES_TABLE ||
         chartType === ChartTypeEnum.STRUCTURAL_VARIANTS_TABLE;
     if (
@@ -5581,21 +5579,6 @@ export function getChartMetaSet(
             displayName: 'Mutated Genes',
             priority: getDefaultPriorityByUniqueKey(
                 ChartTypeEnum.MUTATED_GENES_TABLE
-            ),
-            renderWhenDataChange: false,
-            description: '',
-        };
-    }
-
-    if (!_.isEmpty(mutationProfiles)) {
-        const uniqueKey = ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE;
-        chartMetaSet[uniqueKey] = {
-            uniqueKey,
-            dataType: ChartMetaDataTypeEnum.GENOMIC,
-            patientAttribute: false,
-            displayName: 'OncoTree2Genes-LLM',
-            priority: getDefaultPriorityByUniqueKey(
-                ChartTypeEnum.ONCOTREE2GENES_LLM_TABLE
             ),
             renderWhenDataChange: false,
             description: '',
