@@ -179,6 +179,7 @@ export interface IChartContainerProps {
     onChangeO2glFilter?: (filtered: boolean) => void;
     o2glGenes?: string[];
     o2glOncotreeCodes?: string[];
+    o2glGeneOncotreeCodes?: { [gene: string]: string[] };
     alterationFilterEnabled: boolean;
     filterAlterations?: boolean;
     onChangeCancerGeneFilter?: (filtered: boolean) => void;
@@ -785,6 +786,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeO2glFilter={this.props.onChangeO2glFilter}
                             o2glGenes={this.props.o2glGenes}
                             o2glOncotreeCodes={this.props.o2glOncotreeCodes}
+                            o2glGeneOncotreeCodes={
+                                this.props.o2glGeneOncotreeCodes
+                            }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -936,6 +940,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeO2glFilter={this.props.onChangeO2glFilter}
                             o2glGenes={this.props.o2glGenes}
                             o2glOncotreeCodes={this.props.o2glOncotreeCodes}
+                            o2glGeneOncotreeCodes={
+                                this.props.o2glGeneOncotreeCodes
+                            }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -1119,6 +1126,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onChangeO2glFilter={this.props.onChangeO2glFilter}
                             o2glGenes={this.props.o2glGenes}
                             o2glOncotreeCodes={this.props.o2glOncotreeCodes}
+                            o2glGeneOncotreeCodes={
+                                this.props.o2glGeneOncotreeCodes
+                            }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
