@@ -180,6 +180,7 @@ export interface IChartContainerProps {
     o2glGenes?: string[];
     o2glOncotreeCodes?: string[];
     o2glGeneOncotreeCodes?: { [gene: string]: string[] };
+    oncotreeCodeColorMap?: { [code: string]: string };
     alterationFilterEnabled: boolean;
     filterAlterations?: boolean;
     onChangeCancerGeneFilter?: (filtered: boolean) => void;
@@ -789,6 +790,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             o2glGeneOncotreeCodes={
                                 this.props.o2glGeneOncotreeCodes
                             }
+                            oncotreeCodeColorMap={
+                                this.props.oncotreeCodeColorMap
+                            }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -942,6 +946,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             o2glOncotreeCodes={this.props.o2glOncotreeCodes}
                             o2glGeneOncotreeCodes={
                                 this.props.o2glGeneOncotreeCodes
+                            }
+                            oncotreeCodeColorMap={
+                                this.props.oncotreeCodeColorMap
                             }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
@@ -1128,6 +1135,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             o2glOncotreeCodes={this.props.o2glOncotreeCodes}
                             o2glGeneOncotreeCodes={
                                 this.props.o2glGeneOncotreeCodes
+                            }
+                            oncotreeCodeColorMap={
+                                this.props.oncotreeCodeColorMap
                             }
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
