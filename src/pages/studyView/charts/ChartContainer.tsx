@@ -181,6 +181,7 @@ export interface IChartContainerProps {
     o2glOncotreeCodes?: string[];
     o2glGeneOncotreeCodes?: { [gene: string]: string[] };
     oncotreeCodeColorMap?: { [code: string]: string };
+    oncotreeCodeNameMap?: { [code: string]: string };
     alterationFilterEnabled: boolean;
     filterAlterations?: boolean;
     onChangeCancerGeneFilter?: (filtered: boolean) => void;
@@ -793,6 +794,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             oncotreeCodeColorMap={
                                 this.props.oncotreeCodeColorMap
                             }
+                            oncotreeCodeNameMap={this.props.oncotreeCodeNameMap}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -950,6 +952,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             oncotreeCodeColorMap={
                                 this.props.oncotreeCodeColorMap
                             }
+                            oncotreeCodeNameMap={this.props.oncotreeCodeNameMap}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
@@ -1139,6 +1142,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             oncotreeCodeColorMap={
                                 this.props.oncotreeCodeColorMap
                             }
+                            oncotreeCodeNameMap={this.props.oncotreeCodeNameMap}
                             alterationFilterEnabled={
                                 this.props.alterationFilterEnabled
                             }
