@@ -20,15 +20,19 @@ export default class StudyViewURLWrapper extends URLWrapper<
         | 'embeddings_coloring_selection'
         | 'embeddings_map'
         | 'embeddings_tooltip_fields'
+        | 'embeddings_legend_collapsed'
         | 'embeddings_panel2_coloring_selection'
         | 'embeddings_panel2_map'
         | 'embeddings_panel2_tooltip_fields'
+        | 'embeddings_panel2_legend_collapsed'
         | 'embeddings_panel3_coloring_selection'
         | 'embeddings_panel3_map'
         | 'embeddings_panel3_tooltip_fields'
+        | 'embeddings_panel3_legend_collapsed'
         | 'embeddings_panel4_coloring_selection'
         | 'embeddings_panel4_map'
         | 'embeddings_panel4_tooltip_fields'
+        | 'embeddings_panel4_legend_collapsed'
         | 'geneset_list'
         | 'generic_assay_groups'
     >
@@ -44,24 +48,28 @@ export default class StudyViewURLWrapper extends URLWrapper<
             },
             embeddings_map: { isSessionProp: false },
             embeddings_tooltip_fields: { isSessionProp: false },
+            embeddings_legend_collapsed: { isSessionProp: false },
             embeddings_panel2_coloring_selection: {
                 isSessionProp: false,
                 nestedObjectProps: PlotsColoringParamProps,
             },
             embeddings_panel2_map: { isSessionProp: false },
             embeddings_panel2_tooltip_fields: { isSessionProp: false },
+            embeddings_panel2_legend_collapsed: { isSessionProp: false },
             embeddings_panel3_coloring_selection: {
                 isSessionProp: false,
                 nestedObjectProps: PlotsColoringParamProps,
             },
             embeddings_panel3_map: { isSessionProp: false },
             embeddings_panel3_tooltip_fields: { isSessionProp: false },
+            embeddings_panel3_legend_collapsed: { isSessionProp: false },
             embeddings_panel4_coloring_selection: {
                 isSessionProp: false,
                 nestedObjectProps: PlotsColoringParamProps,
             },
             embeddings_panel4_map: { isSessionProp: false },
             embeddings_panel4_tooltip_fields: { isSessionProp: false },
+            embeddings_panel4_legend_collapsed: { isSessionProp: false },
             geneset_list: { isSessionProp: true },
             generic_assay_groups: { isSessionProp: false },
         });

@@ -241,6 +241,15 @@ export interface LegendPanelProps {
     hiddenCategories?: Set<string>;
     onToggleCategoryVisibility?: (category: string) => void;
     onToggleAllCategories?: () => void;
+    // QC categories are toggled through this separate pair when supplied
+    // (shared across split-view panels), falling back to the general pair
+    // above otherwise.
+    hiddenQcCategories?: Set<string>;
+    onToggleQcCategoryVisibility?: (category: string) => void;
+    // Hides the Total/Visible Samples header and the Configuration section
+    // - used so only one split-view panel shows them, saving space on the
+    // rest. Defaults to true (shown).
+    showHeaderAndConfiguration?: boolean;
     visibleSampleCount?: number;
     totalSampleCount?: number;
     visibleCategoryCount?: number;
@@ -248,6 +257,10 @@ export interface LegendPanelProps {
     isNumericAttribute?: boolean;
     numericalValueRange?: [number, number];
     numericalValueToColor?: (x: number) => string;
+    // Controlled collapse state (e.g. synced to the URL by the caller).
+    // Falls back to local state when omitted.
+    isCollapsed?: boolean;
+    onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export const LegendPanel: React.FC<LegendPanelProps> = ({
@@ -259,6 +272,9 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
     hiddenCategories,
     onToggleCategoryVisibility,
     onToggleAllCategories,
+    hiddenQcCategories,
+    onToggleQcCategoryVisibility,
+    showHeaderAndConfiguration = true,
     visibleSampleCount,
     totalSampleCount,
     visibleCategoryCount,
@@ -266,8 +282,22 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
     isNumericAttribute = false,
     numericalValueRange,
     numericalValueToColor,
+    isCollapsed: controlledIsCollapsed,
+    onCollapsedChange,
 }) => {
     const [isConfigExpanded, setIsConfigExpanded] = React.useState(false);
+    const [localIsCollapsed, setLocalIsCollapsed] = React.useState(false);
+    const isCollapsed =
+        controlledIsCollapsed !== undefined
+            ? controlledIsCollapsed
+            : localIsCollapsed;
+    const setIsCollapsed = (value: boolean) => {
+        if (onCollapsedChange) {
+            onCollapsedChange(value);
+        } else {
+            setLocalIsCollapsed(value);
+        }
+    };
     if (!showLegend) {
         return null;
     }
@@ -383,6 +413,35 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
         return null;
     }
 
+    if (isCollapsed) {
+        return (
+            <button
+                data-test="embeddings-legend-expand"
+                onClick={() => setIsCollapsed(false)}
+                title="Show legend"
+                style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    zIndex: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid #ccc',
+                    borderRadius: '3px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+            >
+                <FontAwesome name="chevron-left" />
+                Legend
+            </button>
+        );
+    }
+
     return (
         <div
             data-test="embeddings-legend"
@@ -404,8 +463,9 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                 flexDirection: 'column',
             }}
         >
-            {/* Status information at the top - Always visible */}
-            {visibleSampleCount !== undefined &&
+            {/* Status information at the top - only on the primary panel */}
+            {showHeaderAndConfiguration &&
+                visibleSampleCount !== undefined &&
                 totalSampleCount !== undefined &&
                 visibleCategoryCount !== undefined &&
                 totalCategoryCount !== undefined && (
@@ -447,6 +507,32 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                     flexShrink: 0,
                 }}
             >
+                <button
+                    data-test="embeddings-legend-collapse"
+                    onClick={() => setIsCollapsed(true)}
+                    title="Hide legend"
+                    style={{
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '4px',
+                        padding: '4px 6px',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginRight: 'auto',
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#e9ecef';
+                        e.currentTarget.style.borderColor = '#adb5bd';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        e.currentTarget.style.borderColor = '#dee2e6';
+                    }}
+                >
+                    <FontAwesome name="chevron-right" />
+                </button>
                 {onToggleAllCategories &&
                     (() => {
                         // Determine if all categories are currently visible
@@ -550,8 +636,10 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                 })()}
             </div>
 
-            {/* Collapsible Configuration Section for non-cohort samples */}
-            {qcEntries.length > 0 && (
+            {/* Collapsible Configuration Section for non-cohort samples -
+                only on the primary panel; the QC visibility it controls is
+                shared across every panel via hiddenQcCategories. */}
+            {showHeaderAndConfiguration && qcEntries.length > 0 && (
                 <div
                     style={{
                         borderTop: '1px solid #eee',
@@ -600,11 +688,15 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             {qcEntries.map(([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
+                                const toggleQcVisibility =
+                                    onToggleQcCategoryVisibility ||
+                                    onToggleCategoryVisibility;
                                 const isHidden =
+                                    hiddenQcCategories?.has(displayLabel) ||
                                     hiddenCategories?.has(displayLabel) ||
                                     false;
                                 const isClickable =
-                                    onToggleCategoryVisibility !== undefined;
+                                    toggleQcVisibility !== undefined;
 
                                 return renderLegendItem(
                                     displayLabel,
@@ -612,7 +704,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                                     count,
                                     isHidden,
                                     isClickable,
-                                    onToggleCategoryVisibility
+                                    toggleQcVisibility
                                 );
                             })}
                         </div>

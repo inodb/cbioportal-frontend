@@ -227,6 +227,15 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                     this.props.onToggleCategoryVisibility
                 }
                 onToggleAllCategories={this.props.onToggleAllCategories}
+                hiddenQcCategories={this.props.hiddenQcCategories}
+                onToggleQcCategoryVisibility={
+                    this.props.onToggleQcCategoryVisibility
+                }
+                showHeaderAndConfiguration={
+                    this.props.showLegendHeaderAndConfiguration
+                }
+                isCollapsed={this.props.legendCollapsed}
+                onCollapsedChange={this.props.onLegendCollapsedChange}
                 visibleSampleCount={this.props.visibleSampleCount}
                 totalSampleCount={this.props.totalSampleCount}
                 visibleCategoryCount={this.props.visibleCategoryCount}
@@ -281,16 +290,33 @@ export class EmbeddingDeckGLVisualization extends React.Component<
         }
     };
 
+    // The effective pan/select mode: controlled by the parent (shared across
+    // every split-view panel) when props.selectionMode is supplied, else
+    // purely local to this instance.
+    private get selectionMode(): 'none' | 'lasso' {
+        return this.props.selectionMode !== undefined
+            ? this.props.selectionMode
+            : this.state.selectionMode;
+    }
+
+    private setSelectionMode = (mode: 'none' | 'lasso') => {
+        if (this.props.onSelectionModeChange) {
+            this.props.onSelectionModeChange(mode);
+        } else {
+            this.setState({ selectionMode: mode });
+        }
+    };
+
     private onSelectionModeChange = (mode: 'none' | 'lasso') => {
+        this.setSelectionMode(mode);
         this.setState({
-            selectionMode: mode,
             isSelecting: false,
             selectionPath: [],
         });
     };
 
     private handleMouseDown = (event: React.MouseEvent) => {
-        if (this.state.selectionMode === 'none') return;
+        if (this.selectionMode === 'none') return;
 
         const rect = event.currentTarget.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -303,8 +329,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
     };
 
     private handleMouseMove = (event: React.MouseEvent) => {
-        if (!this.state.isSelecting || this.state.selectionMode === 'none')
-            return;
+        if (!this.state.isSelecting || this.selectionMode === 'none') return;
 
         const rect = event.currentTarget.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -327,16 +352,15 @@ export class EmbeddingDeckGLVisualization extends React.Component<
     };
 
     private handleMouseUp = (event: React.MouseEvent) => {
-        if (!this.state.isSelecting || this.state.selectionMode === 'none')
-            return;
+        if (!this.state.isSelecting || this.selectionMode === 'none') return;
 
         // Perform lasso selection
         this.performLassoSelection();
 
         // Clear selection state and return to pan mode
+        this.setSelectionMode('none');
         this.setState({
             isSelecting: false,
-            selectionMode: 'none',
             selectionPath: [],
         });
     };
@@ -496,7 +520,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
     };
 
     private renderControls() {
-        const { selectionMode } = this.state;
+        const selectionMode = this.selectionMode;
 
         if (this.props.renderControls) {
             return this.props.renderControls({
@@ -531,7 +555,8 @@ export class EmbeddingDeckGLVisualization extends React.Component<
     }
 
     private renderSelectionOverlay() {
-        const { isSelecting, selectionMode, selectionPath } = this.state;
+        const { isSelecting, selectionPath } = this.state;
+        const selectionMode = this.selectionMode;
 
         return (
             <SelectionOverlay
@@ -556,7 +581,6 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                         width: '100%',
                         height: `${actualHeight}px`,
                         backgroundColor: 'white',
-                        border: '1px solid #ddd',
                     }}
                     onMouseDown={this.handleMouseDown}
                     onMouseMove={this.handleMouseMove}
@@ -580,7 +604,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                         style={{
                             backgroundColor: 'white',
                             cursor:
-                                this.state.selectionMode === 'lasso'
+                                this.selectionMode === 'lasso'
                                     ? 'crosshair'
                                     : 'grab',
                         }}

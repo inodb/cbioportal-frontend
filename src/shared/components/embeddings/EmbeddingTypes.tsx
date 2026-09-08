@@ -81,6 +81,20 @@ export interface EmbeddingVisualizationProps {
     hiddenCategories?: Set<string>;
     onToggleCategoryVisibility?: (category: string) => void;
     onToggleAllCategories?: () => void;
+    // QC categories (e.g. "Sample not in this cohort") are hidden via a set
+    // shared across every split-view panel, separate from the panel-local
+    // hiddenCategories above - toggled from the primary panel's legend
+    // Configuration section but applied everywhere.
+    hiddenQcCategories?: Set<string>;
+    onToggleQcCategoryVisibility?: (category: string) => void;
+    // Only the primary (first) panel shows the legend's Total/Visible
+    // Samples header and Configuration section - the rest just show the
+    // category list, to save space.
+    showLegendHeaderAndConfiguration?: boolean;
+    // Whether the legend is collapsed to its small "‹ Legend" pill - synced
+    // to the URL by the panel so it survives reload/sharing.
+    legendCollapsed?: boolean;
+    onLegendCollapsedChange?: (collapsed: boolean) => void;
     visibleSampleCount?: number;
     totalSampleCount?: number;
     visibleCategoryCount?: number;
@@ -97,6 +111,12 @@ export interface EmbeddingVisualizationProps {
     clinicalAttributeValueMaps?: Map<string, Map<string, string>>;
     mapAttributeValueMaps?: Map<string, Map<string, string>>;
     geneValueMaps?: Map<number, Map<string, string>>;
+    // Controlled pan/lasso-select mode. When supplied, EmbeddingDeckGLVisualization
+    // reads/writes this instead of its own internal state, letting a parent
+    // (e.g. the split-view wrapper) share one pan/select mode across every
+    // mounted panel. Omit to keep the mode purely local to this instance.
+    selectionMode?: 'none' | 'lasso';
+    onSelectionModeChange?: (mode: 'none' | 'lasso') => void;
     // Lets the parent supply the entire top-left control cluster's markup
     // while the export/pan-select mechanics (deck ref, mouse handlers, lasso
     // math) stay owned by EmbeddingDeckGLVisualization. Falls back to the

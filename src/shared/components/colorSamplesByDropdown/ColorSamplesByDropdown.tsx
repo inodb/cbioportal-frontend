@@ -46,6 +46,14 @@ export interface ColorSamplesByDropdownProps {
     // Additional option groups to insert before Clinical Attributes
     additionalGroups?: ColoringMenuOmnibarGroup[];
 
+    // Omits the built-in "Color by:" label - for callers (e.g. one with its
+    // own caption above) that would otherwise show it twice.
+    hideLabel?: boolean;
+    // Stacks the select and the log-scale/gene checkboxes vertically
+    // instead of laying them out in one inline row - for callers with a
+    // narrow, fixed-width column where the inline row would overflow.
+    stacked?: boolean;
+
     // Optional styling
     className?: string;
     style?: React.CSSProperties;
@@ -279,8 +287,14 @@ export class ColorSamplesByDropdown extends React.Component<
     };
 
     render() {
+        const stacked = this.props.stacked;
+
         const selectProps = {
-            className: 'color-samples-toolbar-elt gene-select',
+            // The "gene-select"/"color-samples-toolbar-elt" classes carry
+            // SCSS rules (fixed 350px width, wrapper margin/padding) meant
+            // for the original wide toolbar row - skip them in stacked
+            // mode, where selectStyles alone should size the control.
+            className: stacked ? '' : 'color-samples-toolbar-elt gene-select',
             value: this.props.selectedOption,
             onChange: this.handleSelectionChange,
             isLoading: this.props.isLoading,
@@ -294,24 +308,47 @@ export class ColorSamplesByDropdown extends React.Component<
 
         return (
             <div
-                style={{
-                    display: 'inline-flex',
-                    position: 'relative',
-                    alignItems: 'center',
-                    ...this.props.style,
-                }}
+                style={
+                    stacked
+                        ? {
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'stretch',
+                              ...this.props.style,
+                          }
+                        : {
+                              display: 'inline-flex',
+                              position: 'relative',
+                              alignItems: 'center',
+                              ...this.props.style,
+                          }
+                }
                 data-test="ColorSamplesByDropdown"
                 className={`coloring-menu ${this.props.className || ''}`}
             >
-                <label className="legend-label">Color by:</label>
-                &nbsp;
+                {!this.props.hideLabel && (
+                    <>
+                        <label className="legend-label">Color by:</label>
+                        &nbsp;
+                    </>
+                )}
                 <div
-                    style={{
-                        display: 'inline-block',
-                    }}
+                    style={
+                        stacked
+                            ? {
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: 0,
+                                  margin: 0,
+                              }
+                            : { display: 'inline-block' }
+                    }
                     className="gene-select-background"
                 >
-                    <div className="checkbox gene-select-container">
+                    <div
+                        className="checkbox gene-select-container"
+                        style={stacked ? { margin: 0 } : undefined}
+                    >
                         <If condition={this.props.hasNoQueriedGenes}>
                             <Then>
                                 <AsyncSelect
@@ -360,12 +397,23 @@ export class ColorSamplesByDropdown extends React.Component<
                 {/* Gene-based coloring checkboxes (like PlotsTab) */}
                 {this.isGeneSelected && (
                     <div
-                        style={{
-                            marginLeft: '10px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                        }}
+                        style={
+                            stacked
+                                ? {
+                                      marginTop: '6px',
+                                      marginLeft: '8px',
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      alignItems: 'center',
+                                      gap: '4px 8px',
+                                  }
+                                : {
+                                      marginLeft: '10px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                  }
+                        }
                     >
                         {this.props.mutationDataExists && (
                             <LabeledCheckbox

@@ -1,6 +1,4 @@
 import * as React from 'react';
-import { observer } from 'mobx-react';
-import { observable, action, makeObservable } from 'mobx';
 import Select from 'react-select';
 import ColorSamplesByDropdown from 'shared/components/colorSamplesByDropdown/ColorSamplesByDropdown';
 import {
@@ -26,7 +24,6 @@ export interface EmbeddingControlStackProps {
     clinicalAttributes: ClinicalAttribute[];
     additionalGroups?: ColoringMenuOmnibarGroup[];
     selectedColoringOption?: ColoringMenuOmnibarOption;
-    colorByLabel: string;
     logScale: boolean;
     logScalePossible: boolean;
     isLoading: boolean;
@@ -55,29 +52,22 @@ export interface EmbeddingControlStackProps {
     onCenter: () => void;
     selectionMode: 'none' | 'lasso';
     onSelectionModeChange: (mode: 'none' | 'lasso') => void;
+    // Shared toggle, shown only on the primary panel: when on, every
+    // non-primary panel follows the primary panel's pan/zoom instead of
+    // moving independently.
+    isLockedToPrimary: boolean;
+    onToggleLockedToPrimary: () => void;
 
-    // Split view / close
+    // Panel count
     panelIndex: number;
     panelCount: number;
-    onSplitView: () => void;
-    onClosePanel: () => void;
+    onSetPanelCount: (target: number) => void;
 }
-
-type OpenRow = 'map' | 'colorBy' | 'tooltip' | null;
 
 const BOX_STYLE: React.CSSProperties = {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     border: '1px solid #ccc',
     borderRadius: '4px',
-};
-
-const ROW_STYLE: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '4px 8px',
-    cursor: 'pointer',
-    minWidth: '150px',
-    maxWidth: '220px',
 };
 
 const ROW_LABEL_STYLE: React.CSSProperties = {
@@ -88,282 +78,92 @@ const ROW_LABEL_STYLE: React.CSSProperties = {
     lineHeight: '12px',
 };
 
-const ROW_VALUE_STYLE: React.CSSProperties = {
-    fontSize: '12px',
-    color: '#333',
-    lineHeight: '16px',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+// Bordered, compact react-select look shared by Map/Color by/Tooltip - each
+// is its own self-contained dropdown (no wrapping card, no separate popover
+// fanning out beside it - clicking one opens its menu directly below, same
+// as any other <select>).
+const SELECT_STYLES = {
+    control: (base: any) => ({
+        ...base,
+        fontSize: '12px',
+        minHeight: '32px',
+        boxShadow: 'none',
+        border: '1px solid #ccc',
+    }),
+    menu: (base: any) => ({ ...base, fontSize: '12px', zIndex: 9999 }),
+    container: (base: any) => ({ ...base, width: '100%' }),
+    multiValue: (base: any) => ({ ...base, fontSize: '11px' }),
 };
 
-const POPOVER_STYLE: React.CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 'calc(100% + 6px)',
-    zIndex: 2,
-    width: '260px',
-    backgroundColor: 'white',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-    padding: '8px',
-};
+export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
+    mapOptions,
+    selectedMapOption,
+    onMapChange,
+    showMapColorTooltipControls,
+    genes,
+    clinicalAttributes,
+    additionalGroups,
+    selectedColoringOption,
+    logScale,
+    logScalePossible,
+    isLoading,
+    mutationDataExists,
+    cnaDataExists,
+    svDataExists,
+    mutationTypeEnabled,
+    copyNumberEnabled,
+    structuralVariantEnabled,
+    onColoringSelectionChange,
+    onLogScaleChange,
+    onMutationTypeToggle,
+    onCopyNumberToggle,
+    onStructuralVariantToggle,
+    tooltipFieldGroups,
+    selectedTooltipFields,
+    onTooltipFieldsChange,
+    onExport,
+    onCenter,
+    selectionMode,
+    onSelectionModeChange,
+    isLockedToPrimary,
+    onToggleLockedToPrimary,
+    panelIndex,
+    panelCount,
+    onSetPanelCount,
+}) => {
+    // Pan/Select, tooltip fields, panel count, and export are all either
+    // shared across every panel or only make sense once - so only the
+    // first panel shows them; the rest keep just Map/Color by/Center.
+    const isPrimaryPanel = panelIndex === 1;
 
-function summarizeTooltipFields(
-    selectedFields: Set<string>,
-    fieldGroups: {
-        label: string;
-        options: { value: string; label: string }[];
-    }[]
-): string {
-    if (selectedFields.size === 0) {
-        return 'None';
-    }
-    const labelsByValue = new Map<string, string>();
-    fieldGroups.forEach(group =>
-        group.options.forEach(opt => labelsByValue.set(opt.value, opt.label))
-    );
-    const labels = Array.from(selectedFields).map(
-        value => labelsByValue.get(value) || value
-    );
-    return labels.join(', ');
-}
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                top: '10px',
+                left: '10px',
+                zIndex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontFamily: 'inherit',
+            }}
+        >
+            {showMapColorTooltipControls && (
+                <div style={{ width: '190px' }}>
+                    <span style={ROW_LABEL_STYLE}>Map</span>
+                    <Select
+                        name="embedding-select"
+                        value={selectedMapOption}
+                        onChange={(option: any) => onMapChange(option)}
+                        options={mapOptions}
+                        isSearchable={false}
+                        styles={SELECT_STYLES}
+                    />
+                </div>
+            )}
 
-@observer
-export class EmbeddingControlStack extends React.Component<
-    EmbeddingControlStackProps
-> {
-    @observable private openRow: OpenRow = null;
-    private rootRef = React.createRef<HTMLDivElement>();
-
-    constructor(props: EmbeddingControlStackProps) {
-        super(props);
-        makeObservable(this);
-    }
-
-    componentDidMount() {
-        document.addEventListener('mousedown', this.handleDocumentMouseDown);
-    }
-
-    componentWillUnmount() {
-        document.removeEventListener('mousedown', this.handleDocumentMouseDown);
-    }
-
-    private handleDocumentMouseDown = (e: MouseEvent) => {
-        if (
-            this.openRow &&
-            this.rootRef.current &&
-            !this.rootRef.current.contains(e.target as Node)
-        ) {
-            this.closeRow();
-        }
-    };
-
-    @action.bound
-    private closeRow() {
-        this.openRow = null;
-    }
-
-    private toggleRow(row: OpenRow) {
-        this.openRow = this.openRow === row ? null : row;
-    }
-
-    render() {
-        const {
-            mapOptions,
-            selectedMapOption,
-            onMapChange,
-            showMapColorTooltipControls,
-            genes,
-            clinicalAttributes,
-            additionalGroups,
-            selectedColoringOption,
-            colorByLabel,
-            logScale,
-            logScalePossible,
-            isLoading,
-            mutationDataExists,
-            cnaDataExists,
-            svDataExists,
-            mutationTypeEnabled,
-            copyNumberEnabled,
-            structuralVariantEnabled,
-            onColoringSelectionChange,
-            onLogScaleChange,
-            onMutationTypeToggle,
-            onCopyNumberToggle,
-            onStructuralVariantToggle,
-            tooltipFieldGroups,
-            selectedTooltipFields,
-            onTooltipFieldsChange,
-            onExport,
-            onCenter,
-            selectionMode,
-            onSelectionModeChange,
-            panelCount,
-            onSplitView,
-            onClosePanel,
-        } = this.props;
-
-        const tooltipSummary = summarizeTooltipFields(
-            selectedTooltipFields,
-            tooltipFieldGroups
-        );
-
-        return (
-            <div
-                ref={this.rootRef}
-                style={{
-                    position: 'absolute',
-                    top: '10px',
-                    left: '10px',
-                    zIndex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    fontFamily: 'inherit',
-                }}
-            >
-                {panelCount > 1 && (
-                    <button
-                        onClick={onClosePanel}
-                        title="Close this panel"
-                        style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            right: '-8px',
-                            width: '18px',
-                            height: '18px',
-                            lineHeight: '16px',
-                            padding: 0,
-                            fontSize: '12px',
-                            borderRadius: '50%',
-                            border: '1px solid #ccc',
-                            backgroundColor: 'white',
-                            cursor: 'pointer',
-                            zIndex: 3,
-                        }}
-                    >
-                        ×
-                    </button>
-                )}
-
-                {showMapColorTooltipControls && (
-                    <div style={{ ...BOX_STYLE, position: 'relative' }}>
-                        <div
-                            style={ROW_STYLE}
-                            onClick={() => this.toggleRow('map')}
-                        >
-                            <span style={ROW_LABEL_STYLE}>Map</span>
-                            <span style={ROW_VALUE_STYLE}>
-                                {selectedMapOption?.label || 'Select map'}
-                            </span>
-                        </div>
-                        {this.openRow === 'map' && (
-                            <div style={POPOVER_STYLE}>
-                                <Select
-                                    name="embedding-select"
-                                    autoFocus
-                                    value={selectedMapOption}
-                                    onChange={(option: any) => {
-                                        onMapChange(option);
-                                        this.closeRow();
-                                    }}
-                                    options={mapOptions}
-                                    isSearchable={false}
-                                    styles={{
-                                        menu: (base: any) => ({
-                                            ...base,
-                                            zIndex: 9999,
-                                        }),
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {showMapColorTooltipControls && (
-                    <div style={{ ...BOX_STYLE }}>
-                        <div
-                            style={{ ...ROW_STYLE, position: 'relative' }}
-                            onClick={() => this.toggleRow('colorBy')}
-                        >
-                            <span style={ROW_LABEL_STYLE}>Color by</span>
-                            <span style={ROW_VALUE_STYLE}>{colorByLabel}</span>
-                            {this.openRow === 'colorBy' && (
-                                <div
-                                    style={POPOVER_STYLE}
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    <ColorSamplesByDropdown
-                                        genes={genes}
-                                        clinicalAttributes={clinicalAttributes}
-                                        additionalGroups={additionalGroups}
-                                        selectedOption={selectedColoringOption}
-                                        logScale={logScale}
-                                        hasNoQueriedGenes={true}
-                                        logScalePossible={logScalePossible}
-                                        isLoading={isLoading}
-                                        mutationDataExists={mutationDataExists}
-                                        cnaDataExists={cnaDataExists}
-                                        svDataExists={svDataExists}
-                                        mutationTypeEnabled={
-                                            mutationTypeEnabled
-                                        }
-                                        copyNumberEnabled={copyNumberEnabled}
-                                        structuralVariantEnabled={
-                                            structuralVariantEnabled
-                                        }
-                                        onSelectionChange={option => {
-                                            onColoringSelectionChange(option);
-                                            this.closeRow();
-                                        }}
-                                        onLogScaleChange={onLogScaleChange}
-                                        onMutationTypeToggle={
-                                            onMutationTypeToggle
-                                        }
-                                        onCopyNumberToggle={onCopyNumberToggle}
-                                        onStructuralVariantToggle={
-                                            onStructuralVariantToggle
-                                        }
-                                    />
-                                </div>
-                            )}
-                        </div>
-                        <div
-                            style={{
-                                height: '1px',
-                                backgroundColor: '#eee',
-                            }}
-                        />
-                        <div
-                            style={{ ...ROW_STYLE, position: 'relative' }}
-                            onClick={() => this.toggleRow('tooltip')}
-                        >
-                            <span style={ROW_LABEL_STYLE}>Tooltip fields</span>
-                            <span style={ROW_VALUE_STYLE}>
-                                {tooltipSummary}
-                            </span>
-                            {this.openRow === 'tooltip' && (
-                                <div
-                                    style={POPOVER_STYLE}
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    <TooltipDropdown
-                                        selectedFields={selectedTooltipFields}
-                                        onSelectionChange={
-                                            onTooltipFieldsChange
-                                        }
-                                        options={tooltipFieldGroups}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
+            {isPrimaryPanel && (
                 <div
                     style={{
                         display: 'flex',
@@ -435,33 +235,138 @@ export class EmbeddingControlStack extends React.Component<
                         Select
                     </button>
                 </div>
+            )}
 
-                <button
-                    onClick={onCenter}
-                    style={{
-                        ...BOX_STYLE,
-                        padding: '4px 8px',
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                    }}
-                >
-                    Center
-                </button>
+            {showMapColorTooltipControls && (
+                <div style={{ width: '190px' }}>
+                    <span style={ROW_LABEL_STYLE}>Color by</span>
+                    <ColorSamplesByDropdown
+                        genes={genes}
+                        clinicalAttributes={clinicalAttributes}
+                        additionalGroups={additionalGroups}
+                        selectedOption={selectedColoringOption}
+                        logScale={logScale}
+                        hasNoQueriedGenes={true}
+                        logScalePossible={logScalePossible}
+                        isLoading={isLoading}
+                        mutationDataExists={mutationDataExists}
+                        cnaDataExists={cnaDataExists}
+                        svDataExists={svDataExists}
+                        mutationTypeEnabled={mutationTypeEnabled}
+                        copyNumberEnabled={copyNumberEnabled}
+                        structuralVariantEnabled={structuralVariantEnabled}
+                        stacked
+                        onSelectionChange={onColoringSelectionChange}
+                        onLogScaleChange={onLogScaleChange}
+                        onMutationTypeToggle={onMutationTypeToggle}
+                        onCopyNumberToggle={onCopyNumberToggle}
+                        onStructuralVariantToggle={onStructuralVariantToggle}
+                        hideLabel
+                        selectStyles={SELECT_STYLES}
+                    />
+                </div>
+            )}
 
-                {panelCount < 4 && (
+            {showMapColorTooltipControls && isPrimaryPanel && (
+                <div style={{ width: '190px' }}>
+                    <span style={ROW_LABEL_STYLE}>Tooltip</span>
+                    <TooltipDropdown
+                        selectedFields={selectedTooltipFields}
+                        onSelectionChange={onTooltipFieldsChange}
+                        options={tooltipFieldGroups}
+                        hideLabel
+                        selectStyles={SELECT_STYLES}
+                    />
+                </div>
+            )}
+
+            {isPrimaryPanel && (
+                <div>
+                    <span style={{ ...ROW_LABEL_STYLE, paddingLeft: '2px' }}>
+                        Viewport
+                    </span>
                     <button
-                        onClick={onSplitView}
+                        onClick={onCenter}
                         style={{
                             ...BOX_STYLE,
+                            display: 'block',
+                            width: '100%',
+                            marginTop: '2px',
                             padding: '4px 8px',
                             fontSize: '11px',
                             cursor: 'pointer',
                         }}
                     >
-                        Split view
+                        Center
                     </button>
-                )}
+                </div>
+            )}
 
+            {isPrimaryPanel && (
+                <div>
+                    <span style={{ ...ROW_LABEL_STYLE, paddingLeft: '2px' }}>
+                        Panels
+                    </span>
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: '2px',
+                            ...BOX_STYLE,
+                            padding: '2px',
+                            marginTop: '2px',
+                        }}
+                    >
+                        {[1, 2, 3, 4].map(n => (
+                            <button
+                                key={n}
+                                onClick={() => onSetPanelCount(n)}
+                                title={`Show ${n} map${n > 1 ? 's' : ''}`}
+                                style={{
+                                    flex: 1,
+                                    padding: '4px 0',
+                                    fontSize: '11px',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer',
+                                    backgroundColor:
+                                        panelCount === n
+                                            ? '#007bff'
+                                            : 'transparent',
+                                    color: panelCount === n ? 'white' : '#333',
+                                }}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                    {panelCount > 1 && (
+                        <button
+                            onClick={onToggleLockedToPrimary}
+                            title="Lock every other panel's pan/zoom to this one"
+                            style={{
+                                ...BOX_STYLE,
+                                display: 'block',
+                                width: '100%',
+                                marginTop: '2px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                backgroundColor: isLockedToPrimary
+                                    ? '#007bff'
+                                    : 'rgba(255, 255, 255, 0.95)',
+                                color: isLockedToPrimary ? 'white' : '#333',
+                                border: isLockedToPrimary
+                                    ? '1px solid #007bff'
+                                    : '1px solid #ccc',
+                            }}
+                        >
+                            Lock panel viewports
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {isPrimaryPanel && (
                 <button
                     onClick={onExport}
                     style={{
@@ -473,7 +378,7 @@ export class EmbeddingControlStack extends React.Component<
                 >
                     Export PNG
                 </button>
-            </div>
-        );
-    }
-}
+            )}
+        </div>
+    );
+};

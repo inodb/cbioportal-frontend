@@ -20,6 +20,12 @@ export interface TooltipDropDownProps {
     // fields the user can add to the tooltip, optionally grouped
     // (e.g. Genes / Map Attributes / Clinical Attributes)
     options: TooltipFieldItem[];
+
+    // Omits the built-in "Tooltip fields:" label - for callers (like a
+    // popover with its own caption) that would otherwise show it twice.
+    hideLabel?: boolean;
+    // Passed straight through to the underlying react-select's `styles` prop.
+    selectStyles?: { [key: string]: (base: any, state: any) => any };
 }
 
 export class TooltipDropdown extends React.Component<TooltipDropDownProps> {
@@ -91,16 +97,18 @@ export class TooltipDropdown extends React.Component<TooltipDropDownProps> {
 
         return (
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <label
-                    htmlFor="tooltip-fields-select"
-                    style={{
-                        marginRight: '8px',
-                        whiteSpace: 'nowrap',
-                        fontSize: '14px',
-                    }}
-                >
-                    Tooltip fields:
-                </label>
+                {!this.props.hideLabel && (
+                    <label
+                        htmlFor="tooltip-fields-select"
+                        style={{
+                            marginRight: '8px',
+                            whiteSpace: 'nowrap',
+                            fontSize: '14px',
+                        }}
+                    >
+                        Tooltip fields:
+                    </label>
+                )}
                 <AsyncSelect
                     inputId="tooltip-fields-select"
                     aria-label="Tooltip fields"
@@ -114,21 +122,23 @@ export class TooltipDropdown extends React.Component<TooltipDropDownProps> {
                     loadingMessage={() => 'Searching...'}
                     value={selectedOptions}
                     onChange={this.handleSelectionChange}
-                    styles={{
-                        container: (base: any) => ({
-                            ...base,
-                            width: '300px',
-                        }),
-                        control: (base: any) => ({
-                            ...base,
-                            fontSize: '14px',
-                            minHeight: '34px',
-                        }),
-                        menu: (base: any) => ({
-                            ...base,
-                            zIndex: 9999,
-                        }),
-                    }}
+                    styles={
+                        this.props.selectStyles || {
+                            container: (base: any) => ({
+                                ...base,
+                                width: '300px',
+                            }),
+                            control: (base: any) => ({
+                                ...base,
+                                fontSize: '14px',
+                                minHeight: '34px',
+                            }),
+                            menu: (base: any) => ({
+                                ...base,
+                                zIndex: 9999,
+                            }),
+                        }
+                    }
                 />
             </div>
         );

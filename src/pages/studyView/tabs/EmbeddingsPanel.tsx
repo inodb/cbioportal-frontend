@@ -40,8 +40,38 @@ export interface IEmbeddingsPanelProps {
     store: StudyViewPageStore;
     panelIndex: 1 | 2 | 3 | 4;
     panelCount: number;
-    onSplitView: () => void;
-    onClosePanel: () => void;
+    // Shared across every panel so Pan/Select applies to all of them at once.
+    selectionMode: 'none' | 'lasso';
+    onSelectionModeChange: (mode: 'none' | 'lasso') => void;
+    // Shared across every panel so the same tooltip fields show everywhere.
+    tooltipFields: Set<string>;
+    onTooltipFieldsChange: (fields: Set<string>) => void;
+    // Shared across every panel so hiding a QC category (via the primary
+    // panel's legend Configuration section) applies everywhere.
+    hiddenQcCategories: Set<string>;
+    onToggleQcCategoryVisibility: (category: string) => void;
+    // The primary panel's live viewState. A plain mutable holder (not a
+    // reactive prop) - the primary panel writes to it on every pan/zoom
+    // frame via onPrimaryViewStateChange, and a locked panel polls it via
+    // requestAnimationFrame (see startLockPolling) rather than receiving
+    // pushed updates, so panning/zooming never forces every panel to
+    // re-render.
+    primaryViewStateHolder: { current: ViewState | null };
+    onPrimaryViewStateChange: (viewState: ViewState) => void;
+    // Registers this panel's own PNG-export function with the wrapper (pass
+    // null to unregister on unmount), so the primary panel's single Export
+    // PNG button can export every panel at once.
+    onRegisterExport: (
+        panelIndex: number,
+        exportFn: (() => void) | null
+    ) => void;
+    onExportAll: () => void;
+    // Single toggle shared by every panel (shown only on the primary
+    // panel's controls): when on, every non-primary panel follows the
+    // primary panel's pan/zoom instead of moving independently.
+    isLockedToPrimary: boolean;
+    onToggleLockedToPrimary: () => void;
+    onSetPanelCount: (target: number) => void;
 }
 
 // Base URL for embedding data
@@ -84,7 +114,7 @@ export class EmbeddingsPanel extends React.Component<
     };
     @observable private windowHeight = window.innerHeight;
     @observable private hiddenCategories = new Set<string>();
-    @observable private selectedTooltipFields = new Set<string>();
+    @observable private legendCollapsed = false;
     @observable.ref private pinnedPoint: EmbeddingPoint | null = null;
     private urlParameterReactionDisposer?: () => void;
     private urlSyncReactionDisposer?: () => void;
@@ -118,10 +148,10 @@ export class EmbeddingsPanel extends React.Component<
             : `embeddings_panel${this.props.panelIndex}_map`;
     }
 
-    @computed private get tooltipFieldsParamName(): string {
+    @computed private get legendCollapsedParamName(): string {
         return this.props.panelIndex === 1
-            ? 'embeddings_tooltip_fields'
-            : `embeddings_panel${this.props.panelIndex}_tooltip_fields`;
+            ? 'embeddings_legend_collapsed'
+            : `embeddings_panel${this.props.panelIndex}_legend_collapsed`;
     }
 
     constructor(props: IEmbeddingsPanelProps) {
@@ -131,26 +161,17 @@ export class EmbeddingsPanel extends React.Component<
         // Initialize default coloring
         this.initializeDefaultColoring();
 
-        // Initialize map choice and tooltip fields from the URL once, up
-        // front - these are simple single-value params, not gated on any
-        // async data the way gene-based coloring is.
+        // Initialize map choice from the URL once, up front - a simple
+        // single-value param, not gated on any async data the way
+        // gene-based coloring is. Tooltip fields are shared across every
+        // panel and owned by the wrapper (this.props.tooltipFields).
         const urlWrapper = (this.props.store as any).urlWrapper;
         const mapFromUrl = urlWrapper?.query?.[this.mapParamName];
         if (mapFromUrl) {
             this.selectedEmbeddingValue = mapFromUrl;
         }
-        const tooltipFieldsFromUrl =
-            urlWrapper?.query?.[this.tooltipFieldsParamName];
-        if (tooltipFieldsFromUrl) {
-            try {
-                const parsed = JSON.parse(tooltipFieldsFromUrl);
-                if (Array.isArray(parsed)) {
-                    this.selectedTooltipFields = new Set(parsed);
-                }
-            } catch (e) {
-                // Malformed URL param - ignore and keep the empty default.
-            }
-        }
+        this.legendCollapsed =
+            urlWrapper?.query?.[this.legendCollapsedParamName] === 'true';
 
         // Listen for window resize events
         this.handleResize = this.handleResize.bind(this);
@@ -267,10 +288,73 @@ export class EmbeddingsPanel extends React.Component<
 
     componentDidMount() {
         window.addEventListener('resize', this.handleResize);
+        // A newly-created panel (e.g. from splitting into more panels)
+        // should immediately join the sync if the lock is already on.
+        if (this.props.isLockedToPrimary) {
+            this.adoptPrimaryViewState();
+            this.startLockPolling();
+        }
+    }
+
+    componentDidUpdate(prevProps: IEmbeddingsPanelProps) {
+        if (prevProps.isLockedToPrimary !== this.props.isLockedToPrimary) {
+            if (this.props.isLockedToPrimary) {
+                this.adoptPrimaryViewState();
+                this.startLockPolling();
+            } else {
+                this.stopLockPolling();
+            }
+        }
+    }
+
+    // Polls the shared viewState holder while locked, rather than
+    // receiving it as a reactive prop - the holder is a plain mutable
+    // object ANY panel can write to on every pan/zoom frame (see its own
+    // comment for why), so this loop is the only way a panel picks up a
+    // change some OTHER panel made. Every panel (not just one "primary"
+    // source) both writes to and polls the same holder while locked, so
+    // panning/zooming any one of them keeps them all in sync. Runs only
+    // while locked, and only this panel re-renders when it actually
+    // adopts a new view (a plain reference check skips the work entirely
+    // when nothing has changed, including reacting to its own writes).
+    private lockPollRafId?: number;
+
+    private startLockPolling() {
+        if (this.lockPollRafId !== undefined) {
+            return;
+        }
+        const poll = () => {
+            if (!this.props.isLockedToPrimary) {
+                this.lockPollRafId = undefined;
+                return;
+            }
+            const primary = this.props.primaryViewStateHolder.current;
+            if (primary && primary !== this.viewState) {
+                this.adoptPrimaryViewState();
+            }
+            this.lockPollRafId = requestAnimationFrame(poll);
+        };
+        this.lockPollRafId = requestAnimationFrame(poll);
+    }
+
+    private stopLockPolling() {
+        if (this.lockPollRafId !== undefined) {
+            cancelAnimationFrame(this.lockPollRafId);
+            this.lockPollRafId = undefined;
+        }
+    }
+
+    @action.bound
+    private adoptPrimaryViewState() {
+        const primary = this.props.primaryViewStateHolder.current;
+        if (primary) {
+            this.viewState = primary;
+        }
     }
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.handleResize);
+        this.props.onRegisterExport(this.props.panelIndex, null);
 
         // Clean up reactions
         if (this.viewStateReactionDisposer) {
@@ -288,6 +372,7 @@ export class EmbeddingsPanel extends React.Component<
         if (this.filterChangeReactionDisposer) {
             this.filterChangeReactionDisposer();
         }
+        this.stopLockPolling();
     }
 
     @action.bound
@@ -510,7 +595,7 @@ export class EmbeddingsPanel extends React.Component<
         const ids = new Set(
             EmbeddingsPanel.FIXED_TOOLTIP_CLINICAL_ATTRIBUTE_IDS
         );
-        this.selectedTooltipFields.forEach(field => {
+        this.props.tooltipFields.forEach(field => {
             if (field.startsWith('clinical_')) {
                 ids.add(field.slice('clinical_'.length));
             }
@@ -542,7 +627,7 @@ export class EmbeddingsPanel extends React.Component<
             ])
         );
 
-        this.selectedTooltipFields.forEach(field => {
+        this.props.tooltipFields.forEach(field => {
             if (!field.startsWith('mapattr_')) {
                 return;
             }
@@ -593,7 +678,7 @@ export class EmbeddingsPanel extends React.Component<
 
         const allSamples = this.props.store.samples.result || [];
 
-        this.selectedTooltipFields.forEach(field => {
+        this.props.tooltipFields.forEach(field => {
             if (!field.startsWith('gene_')) {
                 return;
             }
@@ -730,10 +815,25 @@ export class EmbeddingsPanel extends React.Component<
         // toolbar row above the plot to measure.
         const contentTop = 300;
 
-        const calculatedHeight = viewportHeight - contentTop - bottomPadding;
+        // At 4 panels the wrapper lays them out as a 2x2 grid (see
+        // EmbeddingsTab.tsx) - two rows share the same vertical budget a
+        // single row would otherwise get, so the whole grid fits within the
+        // viewport instead of forcing a tall page scroll.
+        const rowCount = this.props.panelCount === 4 ? 2 : 1;
+        const rowGap = 12;
 
-        // Minimum 500px for usability.
-        return Math.max(500, calculatedHeight);
+        const availableHeight =
+            viewportHeight -
+            contentTop -
+            bottomPadding -
+            (rowCount - 1) * rowGap;
+        const calculatedHeight = availableHeight / rowCount;
+
+        // Minimum height for usability - lower when splitting into rows,
+        // since forcing 500px there would defeat the point and force a
+        // scroll anyway.
+        const minHeight = rowCount > 1 ? 300 : 500;
+        return Math.max(minHeight, calculatedHeight);
     }
 
     @computed get mutationDataExists(): boolean {
@@ -918,15 +1018,26 @@ export class EmbeddingsPanel extends React.Component<
             return [];
         }
 
-        // Access driverAnnotationsEnabled to establish MobX reactive dependency
-        // This ensures rawPlotData re-computes when driver annotation state changes
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const _ = this.driverAnnotationsEnabled;
+        const isColoringByGene =
+            this.selectedColoringOption?.info?.entrezGeneId &&
+            this.selectedColoringOption.info.entrezGeneId !== -3; // Not "Cancer Type"
+
+        // Only establish a reactive dependency on the shared, store-level
+        // driver annotation settings when this panel's OWN coloring is
+        // gene-based. driverAnnotationSettings lives on the store, not
+        // per-panel, so an unconditional read here would make every
+        // panel's rawPlotData - and so its whole plot - recompute
+        // whenever ANY OTHER panel's gene selection flips it, even though
+        // driver status has no bearing on a panel colored by something
+        // else.
+        if (isColoringByGene) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const _ = this.driverAnnotationsEnabled;
+        }
 
         // If we're coloring by a gene, wait for molecular data to be loaded
         if (
-            this.selectedColoringOption?.info?.entrezGeneId &&
-            this.selectedColoringOption.info.entrezGeneId !== -3 && // Not "Cancer Type"
+            isColoringByGene &&
             (this.mutationTypeEnabled ||
                 this.copyNumberEnabled ||
                 this.structuralVariantEnabled)
@@ -1008,10 +1119,15 @@ export class EmbeddingsPanel extends React.Component<
             return point;
         });
 
-        // Filter out hidden categories
-        const filteredData = processedData.filter(
-            point => !this.hiddenCategories.has(point.displayLabel || '')
-        );
+        // Filter out hidden categories (this panel's own toggles, plus the
+        // QC categories hidden via Configuration - shared across every panel)
+        const filteredData = processedData.filter(point => {
+            const label = point.displayLabel || '';
+            return (
+                !this.hiddenCategories.has(label) &&
+                !this.props.hiddenQcCategories.has(label)
+            );
+        });
 
         return filteredData;
     }
@@ -1271,7 +1387,10 @@ export class EmbeddingsPanel extends React.Component<
         if (!this.categoryCounts) return 0;
         let visibleCount = 0;
         this.categoryCounts.forEach((count, category) => {
-            if (!this.hiddenCategories.has(category)) {
+            if (
+                !this.hiddenCategories.has(category) &&
+                !this.props.hiddenQcCategories.has(category)
+            ) {
                 visibleCount++;
             }
         });
@@ -1490,8 +1609,20 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @action.bound
-    private onViewStateChange(newViewState: ViewState) {
+    private setViewState(newViewState: ViewState) {
         this.viewState = newViewState;
+        // While locked, every panel (not just one designated "primary")
+        // both drives and follows the shared view - panning/zooming any
+        // one of them broadcasts to the rest via the same holder they all
+        // poll (see startLockPolling).
+        if (this.props.isLockedToPrimary) {
+            this.props.onPrimaryViewStateChange(newViewState);
+        }
+    }
+
+    @action.bound
+    private onViewStateChange(newViewState: ViewState) {
+        this.setViewState(newViewState);
     }
 
     @action.bound
@@ -1500,12 +1631,12 @@ export class EmbeddingsPanel extends React.Component<
             const bounds = calculateDataBounds(
                 this.plotData as EmbeddingPoint[]
             );
-            this.viewState = {
+            this.setViewState({
                 target: [bounds.centerX, bounds.centerY, 0],
                 zoom: bounds.zoom,
                 minZoom: -5,
                 maxZoom: 10,
-            };
+            });
         }
     }
 
@@ -1529,15 +1660,13 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @action.bound
-    private onTooltipFieldsChange(selectedFields: Set<string>) {
-        this.selectedTooltipFields = selectedFields;
+    private onLegendCollapsedChange(collapsed: boolean) {
+        this.legendCollapsed = collapsed;
 
         const urlWrapper = (this.props.store as any).urlWrapper;
         if (urlWrapper) {
             urlWrapper.updateURL({
-                [this.tooltipFieldsParamName]: JSON.stringify(
-                    Array.from(selectedFields)
-                ),
+                [this.legendCollapsedParamName]: collapsed ? 'true' : undefined,
             });
         }
     }
@@ -1644,7 +1773,17 @@ export class EmbeddingsPanel extends React.Component<
         }
     }
 
-    @computed get plotComponent(): JSX.Element {
+    // A plain method, not @computed: its renderControls callback reads
+    // props (like isLockedToPrimary) and store-derived values that a
+    // cached computed wouldn't reliably see change - a computed only
+    // recomputes when ITS OWN synchronous execution touches a changed
+    // MobX observable, and prop reads (and reads deferred into a
+    // lazily-invoked callback) don't count, so a cached version of this
+    // could silently keep returning stale controls. Called directly from
+    // render(), which already re-runs on every relevant prop/observable
+    // change via React + the @observer reaction, so nothing here needs
+    // its own memoization.
+    private renderPlotComponent(): JSX.Element {
         if (this.isLoading) {
             return (
                 <div
@@ -1689,7 +1828,11 @@ export class EmbeddingsPanel extends React.Component<
             yAxisLabel: `${this.selectedEmbedding.label} 2`,
             height: this.plotHeight,
             showLegend: true,
-            filename: `${this.selectedEmbedding.value}_embedding`,
+            filename: `${this.selectedEmbedding.value}_embedding${
+                this.props.panelCount > 1
+                    ? `_panel${this.props.panelIndex}`
+                    : ''
+            }`,
             viewState: this.viewState,
             onViewStateChange: this.onViewStateChange,
             onPointSelection: this.handlePointSelection,
@@ -1700,6 +1843,12 @@ export class EmbeddingsPanel extends React.Component<
             hiddenCategories: this.hiddenCategories,
             onToggleCategoryVisibility: this.toggleCategoryVisibility,
             onToggleAllCategories: this.toggleAllCategories,
+            hiddenQcCategories: this.props.hiddenQcCategories,
+            onToggleQcCategoryVisibility: this.props
+                .onToggleQcCategoryVisibility,
+            showLegendHeaderAndConfiguration: this.props.panelIndex === 1,
+            legendCollapsed: this.legendCollapsed,
+            onLegendCollapsedChange: this.onLegendCollapsedChange,
             visibleSampleCount: this.visibleSampleCount,
             totalSampleCount: this.totalSampleCount,
             visibleCategoryCount: this.visibleCategoryCount,
@@ -1710,8 +1859,11 @@ export class EmbeddingsPanel extends React.Component<
             pinnedPoint: this.pinnedPoint,
             onPinPoint: this.pinPoint,
             onUnpinPoint: this.unpinPoint,
-            selectedTooltipFields: new Set(this.selectedTooltipFields), //Clone to ensure prop identity changes and the tooltip re-renders reliably
+            selectedTooltipFields: new Set(this.props.tooltipFields), //Clone to ensure prop identity changes and the tooltip re-renders reliably
             colorByLabel: this.effectiveColoringOption?.label,
+            // Shared with every other panel, so Pan/Select applies to all.
+            selectionMode: this.props.selectionMode,
+            onSelectionModeChange: this.props.onSelectionModeChange,
             tooltipFieldOptions: this.tooltipFieldOptions,
             clinicalAttributeValueMaps: this.tooltipClinicalAttributeValueMaps,
             mapAttributeValueMaps: this.tooltipMapAttributeValueMaps,
@@ -1720,44 +1872,62 @@ export class EmbeddingsPanel extends React.Component<
                 onExport: () => void;
                 selectionMode: 'none' | 'lasso';
                 onSelectionModeChange: (mode: 'none' | 'lasso') => void;
-            }) => (
-                <EmbeddingControlStack
-                    mapOptions={this.reactSelectEmbeddingOptions}
-                    selectedMapOption={this.selectedReactSelectOption}
-                    onMapChange={this.onEmbeddingChange}
-                    showMapColorTooltipControls={this.shouldShowControls}
-                    genes={this.genes}
-                    clinicalAttributes={this.clinicalAttributes}
-                    additionalGroups={this.embeddingDataGroups}
-                    selectedColoringOption={this.effectiveColoringOption}
-                    colorByLabel={this.effectiveColoringOption?.label || 'None'}
-                    logScale={this.coloringLogScale}
-                    logScalePossible={this.logScalePossible}
-                    isLoading={this.isLoading}
-                    mutationDataExists={this.mutationDataExists}
-                    cnaDataExists={this.cnaDataExists}
-                    svDataExists={this.svDataExists}
-                    mutationTypeEnabled={this.mutationTypeEnabled}
-                    copyNumberEnabled={this.copyNumberEnabled}
-                    structuralVariantEnabled={this.structuralVariantEnabled}
-                    onColoringSelectionChange={this.onColoringSelectionChange}
-                    onLogScaleChange={this.onLogScaleChange}
-                    onMutationTypeToggle={this.onMutationTypeToggle}
-                    onCopyNumberToggle={this.onCopyNumberToggle}
-                    onStructuralVariantToggle={this.onStructuralVariantToggle}
-                    tooltipFieldGroups={this.tooltipFieldGroups}
-                    selectedTooltipFields={this.selectedTooltipFields}
-                    onTooltipFieldsChange={this.onTooltipFieldsChange}
-                    onExport={childControls.onExport}
-                    onCenter={this.centerView}
-                    selectionMode={childControls.selectionMode}
-                    onSelectionModeChange={childControls.onSelectionModeChange}
-                    panelIndex={this.props.panelIndex}
-                    panelCount={this.props.panelCount}
-                    onSplitView={this.props.onSplitView}
-                    onClosePanel={this.props.onClosePanel}
-                />
-            ),
+            }) => {
+                // Register this panel's own export function so the primary
+                // panel's Export PNG button can export every panel at
+                // once. childControls.onExport is a stable bound field on
+                // EmbeddingDeckGLVisualization, so this is idempotent.
+                this.props.onRegisterExport(
+                    this.props.panelIndex,
+                    childControls.onExport
+                );
+                return (
+                    <EmbeddingControlStack
+                        mapOptions={this.reactSelectEmbeddingOptions}
+                        selectedMapOption={this.selectedReactSelectOption}
+                        onMapChange={this.onEmbeddingChange}
+                        showMapColorTooltipControls={this.shouldShowControls}
+                        genes={this.genes}
+                        clinicalAttributes={this.clinicalAttributes}
+                        additionalGroups={this.embeddingDataGroups}
+                        selectedColoringOption={this.effectiveColoringOption}
+                        logScale={this.coloringLogScale}
+                        logScalePossible={this.logScalePossible}
+                        isLoading={this.isLoading}
+                        mutationDataExists={this.mutationDataExists}
+                        cnaDataExists={this.cnaDataExists}
+                        svDataExists={this.svDataExists}
+                        mutationTypeEnabled={this.mutationTypeEnabled}
+                        copyNumberEnabled={this.copyNumberEnabled}
+                        structuralVariantEnabled={this.structuralVariantEnabled}
+                        onColoringSelectionChange={
+                            this.onColoringSelectionChange
+                        }
+                        onLogScaleChange={this.onLogScaleChange}
+                        onMutationTypeToggle={this.onMutationTypeToggle}
+                        onCopyNumberToggle={this.onCopyNumberToggle}
+                        onStructuralVariantToggle={
+                            this.onStructuralVariantToggle
+                        }
+                        tooltipFieldGroups={this.tooltipFieldGroups}
+                        selectedTooltipFields={this.props.tooltipFields}
+                        onTooltipFieldsChange={this.props.onTooltipFieldsChange}
+                        onExport={this.props.onExportAll}
+                        onCenter={this.centerView}
+                        selectionMode={childControls.selectionMode}
+                        onSelectionModeChange={
+                            childControls.onSelectionModeChange
+                        }
+                        isLockedToPrimary={this.props.isLockedToPrimary}
+                        onToggleLockedToPrimary={
+                            this.props.onToggleLockedToPrimary
+                        }
+                        panelIndex={this.props.panelIndex}
+                        panelCount={this.props.panelCount}
+                        onSetPanelCount={this.props.onSetPanelCount}
+                    />
+                );
+            },
         };
 
         return (
@@ -1810,7 +1980,7 @@ export class EmbeddingsPanel extends React.Component<
         return (
             <div className="embeddings-tab">
                 {/* Plot */}
-                {this.plotComponent}
+                {this.renderPlotComponent()}
             </div>
         );
     }
