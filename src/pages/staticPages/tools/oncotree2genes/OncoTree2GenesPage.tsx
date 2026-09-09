@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Helmet from 'react-helmet';
-import { PageLayout } from '../../../shared/components/PageLayout/PageLayout';
+import { PageLayout } from '../../../../shared/components/PageLayout/PageLayout';
 import { getClient } from 'shared/api/cbioportalClientInstance';
 import LazyMobXTable, {
     Column,

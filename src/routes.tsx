@@ -44,7 +44,7 @@ const DatasetPage = SuspenseWrapper(
 const OncoTree2GenesPage = SuspenseWrapper(
     React.lazy(() =>
         // @ts-ignore
-        import('./pages/staticPages/oncotree2genes/OncoTree2GenesPage')
+        import('./pages/staticPages/tools/oncotree2genes/OncoTree2GenesPage')
     )
 );
 const Homepage = SuspenseWrapper(
@@ -494,7 +494,7 @@ export const makeRoutes = () => {
                 <Route path="/oncoprinter" component={OncoprinterTool} />
                 <Route path="/datasets" component={ScrollToTop(DatasetPage)} />
                 <Route
-                    path="/oncotree2genes"
+                    path="/tools/oncotree2genes"
                     component={ScrollToTop(OncoTree2GenesPage)}
                 />
                 <Route path="/installations" component={InstallationMap} />
