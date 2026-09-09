@@ -60,6 +60,8 @@ export interface EmbeddingControlStackProps {
     // moving independently.
     isLockedToPrimary: boolean;
     onToggleLockedToPrimary: () => void;
+    isMapLocked: boolean;
+    onToggleLockMap: () => void;
 
     // Panel count
     panelIndex: number;
@@ -128,6 +130,8 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     onCenter,
     isLockedToPrimary,
     onToggleLockedToPrimary,
+    isMapLocked,
+    onToggleLockMap,
     panelIndex,
     panelCount,
     onSetPanelCount,
@@ -268,28 +272,54 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         ))}
                     </div>
                     {panelCount > 1 && (
-                        <button
-                            onClick={onToggleLockedToPrimary}
-                            title="Lock every other panel's pan/zoom to this one"
+                        <div
                             style={{
-                                ...BOX_STYLE,
-                                display: 'block',
-                                width: '100%',
+                                display: 'flex',
+                                gap: '2px',
                                 marginTop: '2px',
-                                padding: '4px 8px',
-                                fontSize: '11px',
-                                cursor: 'pointer',
-                                backgroundColor: isLockedToPrimary
-                                    ? '#007bff'
-                                    : 'rgba(255, 255, 255, 0.95)',
-                                color: isLockedToPrimary ? 'white' : '#333',
-                                border: isLockedToPrimary
-                                    ? '1px solid #007bff'
-                                    : '1px solid #ccc',
                             }}
                         >
-                            Lock panel viewports
-                        </button>
+                            <button
+                                onClick={onToggleLockMap}
+                                title="Use the same map in every panel"
+                                style={{
+                                    ...BOX_STYLE,
+                                    flex: 1,
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    backgroundColor: isMapLocked
+                                        ? '#007bff'
+                                        : 'rgba(255, 255, 255, 0.95)',
+                                    color: isMapLocked ? 'white' : '#333',
+                                    border: isMapLocked
+                                        ? '1px solid #007bff'
+                                        : '1px solid #ccc',
+                                }}
+                            >
+                                Lock Map
+                            </button>
+                            <button
+                                onClick={onToggleLockedToPrimary}
+                                title="Lock every other panel's pan/zoom to this one"
+                                style={{
+                                    ...BOX_STYLE,
+                                    flex: 1,
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    backgroundColor: isLockedToPrimary
+                                        ? '#007bff'
+                                        : 'rgba(255, 255, 255, 0.95)',
+                                    color: isLockedToPrimary ? 'white' : '#333',
+                                    border: isLockedToPrimary
+                                        ? '1px solid #007bff'
+                                        : '1px solid #ccc',
+                                }}
+                            >
+                                Lock Viewport
+                            </button>
+                        </div>
                     )}
                 </div>
             )}

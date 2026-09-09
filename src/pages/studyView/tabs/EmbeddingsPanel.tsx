@@ -97,6 +97,12 @@ export interface IEmbeddingsPanelProps {
     // primary panel's pan/zoom instead of moving independently.
     isLockedToPrimary: boolean;
     onToggleLockedToPrimary: () => void;
+    // When true, every panel shows the same map (driven from the status
+    // bar's dropdown) instead of its own.
+    isMapLocked: boolean;
+    onToggleLockMap: () => void;
+    sharedMapValue?: string;
+    onSharedMapChange: (value: string) => void;
     onSetPanelCount: (target: number) => void;
 }
 
@@ -459,6 +465,16 @@ export class EmbeddingsPanel extends React.Component<
             prevProps.clearFilterRequestId !== this.props.clearFilterRequestId
         ) {
             this.clearOwnFilters();
+        }
+        if (
+            this.props.isMapLocked &&
+            this.props.sharedMapValue !== undefined &&
+            prevProps.sharedMapValue !== this.props.sharedMapValue
+        ) {
+            this.onEmbeddingChange({
+                value: this.props.sharedMapValue,
+                label: '',
+            });
         }
         this.syncReactivePropMirrors(prevProps);
     }
@@ -1876,6 +1892,9 @@ export class EmbeddingsPanel extends React.Component<
                         [this.mapParamName]: selectedOption.value,
                     });
                 }
+                if (this.props.isMapLocked) {
+                    this.props.onSharedMapChange(selectedOption.value);
+                }
             }
         }
     }
@@ -2182,7 +2201,9 @@ export class EmbeddingsPanel extends React.Component<
                     selectedMapOption={this.selectedReactSelectOption}
                     onMapChange={this.onEmbeddingChange}
                     showMapColorTooltipControls={this.shouldShowControls}
-                    showMapInControlStack={this.props.panelCount > 1}
+                    showMapInControlStack={
+                        this.props.panelCount > 1 && !this.props.isMapLocked
+                    }
                     genes={this.genes}
                     clinicalAttributes={this.clinicalAttributes}
                     additionalGroups={this.embeddingDataGroups}
@@ -2207,6 +2228,8 @@ export class EmbeddingsPanel extends React.Component<
                     onCenter={this.centerView}
                     isLockedToPrimary={this.props.isLockedToPrimary}
                     onToggleLockedToPrimary={this.props.onToggleLockedToPrimary}
+                    isMapLocked={this.props.isMapLocked}
+                    onToggleLockMap={this.props.onToggleLockMap}
                     panelIndex={this.props.panelIndex}
                     panelCount={this.props.panelCount}
                     onSetPanelCount={this.props.onSetPanelCount}

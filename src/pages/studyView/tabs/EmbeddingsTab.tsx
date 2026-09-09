@@ -118,6 +118,10 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     // non-primary panel follows the primary panel's pan/zoom instead of
     // moving independently.
     @observable private sharedLockToPrimary = false;
+    // When on (default), every panel shows the same map, driven from the
+    // status bar's dropdown instead of each panel's own.
+    @observable private sharedLockMap = true;
+    @observable private sharedMapValue: string | undefined;
 
     // Total/visible sample counts (plus the embedding's own full
     // construction size and description), reported by whichever panel
@@ -205,6 +209,22 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     @action.bound
     private onToggleLockToPrimary() {
         this.sharedLockToPrimary = !this.sharedLockToPrimary;
+    }
+
+    @action.bound
+    private onToggleLockMap() {
+        this.sharedLockMap = !this.sharedLockMap;
+        if (this.sharedLockMap) {
+            const current = this.panel1Ref.current?.selectedReactSelectOption;
+            if (current) {
+                this.sharedMapValue = current.value;
+            }
+        }
+    }
+
+    @action.bound
+    private onSharedMapChange(value: string) {
+        this.sharedMapValue = value;
     }
 
     @action.bound
@@ -451,6 +471,10 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                             onPrimaryViewStateChange={this.setPrimaryViewState}
                             isLockedToPrimary={this.sharedLockToPrimary}
                             onToggleLockedToPrimary={this.onToggleLockToPrimary}
+                            isMapLocked={this.sharedLockMap}
+                            onToggleLockMap={this.onToggleLockMap}
+                            sharedMapValue={this.sharedMapValue}
+                            onSharedMapChange={this.onSharedMapChange}
                             onSetPanelCount={target =>
                                 this.onSetPanelCount(target, panelIndex)
                             }
@@ -602,13 +626,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} visible
                                 </>
-                            ) : this.panelCount === 1 ? (
-                                // These per-embedding counts (and the map
-                                // dropdown itself) only make sense for a
-                                // single panel - with multiple panels each
-                                // can have a different map selected, so
-                                // there's no one "the" map/sample-size to
-                                // report here.
+                            ) : this.panelCount === 1 || this.sharedLockMap ? (
                                 <>
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} embedded in{' '}
@@ -639,91 +657,98 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                 </>
                             ) : null}
                         </span>
-                        {!isFilterActive && this.panelCount === 1 && (
-                            <DefaultTooltip
-                                placement="bottom"
-                                overlay={
-                                    <div
-                                        style={{
-                                            minWidth: '220px',
-                                            maxWidth: '300px',
-                                            fontSize: '12px',
-                                        }}
-                                    >
-                                        {this.reportedEmbeddingDescription && (
-                                            <div
-                                                style={{ marginBottom: '6px' }}
-                                            >
-                                                {
-                                                    this
-                                                        .reportedEmbeddingDescription
-                                                }
+                        {!isFilterActive &&
+                            (this.panelCount === 1 || this.sharedLockMap) && (
+                                <DefaultTooltip
+                                    placement="bottom"
+                                    overlay={
+                                        <div
+                                            style={{
+                                                minWidth: '220px',
+                                                maxWidth: '300px',
+                                                fontSize: '12px',
+                                            }}
+                                        >
+                                            {this
+                                                .reportedEmbeddingDescription && (
+                                                <div
+                                                    style={{
+                                                        marginBottom: '6px',
+                                                    }}
+                                                >
+                                                    {
+                                                        this
+                                                            .reportedEmbeddingDescription
+                                                    }
+                                                </div>
+                                            )}
+                                            <div>
+                                                This shows a 2D projection of an{' '}
+                                                <strong>embedding</strong> - a
+                                                representation that places{' '}
+                                                {this.unitLabel} with similar
+                                                patterns close together.
+                                                {this
+                                                    .hasMissingCohortSamples && (
+                                                    <>
+                                                        {' '}
+                                                        It&apos;s precomputed,
+                                                        so only the{' '}
+                                                        {this.unitLabel} that
+                                                        were part of building it
+                                                        show up here (in your
+                                                        case,{' '}
+                                                        <strong>
+                                                            {this.reportedTotalSampleCount.toLocaleString()}
+                                                        </strong>{' '}
+                                                        of your cohort&apos;s{' '}
+                                                        <strong>
+                                                            {this.reportedCohortCount.toLocaleString()}
+                                                        </strong>{' '}
+                                                        {this.unitLabel}).
+                                                    </>
+                                                )}
                                             </div>
-                                        )}
-                                        <div>
-                                            This shows a 2D projection of an{' '}
-                                            <strong>embedding</strong> - a
-                                            representation that places{' '}
-                                            {this.unitLabel} with similar
-                                            patterns close together.
-                                            {this.hasMissingCohortSamples && (
-                                                <>
-                                                    {' '}
-                                                    It&apos;s precomputed, so
-                                                    only the {
-                                                        this.unitLabel
-                                                    }{' '}
-                                                    that were part of building
-                                                    it show up here (in your
-                                                    case,{' '}
+                                            {this.hasExtraNonCohortSamples && (
+                                                <div
+                                                    style={{ marginTop: '6px' }}
+                                                >
+                                                    The map was built using an
+                                                    additional{' '}
                                                     <strong>
-                                                        {this.reportedTotalSampleCount.toLocaleString()}
+                                                        {(
+                                                            this
+                                                                .reportedEmbeddingSampleSize -
+                                                            this
+                                                                .reportedTotalSampleCount
+                                                        ).toLocaleString()}
                                                     </strong>{' '}
-                                                    of your cohort&apos;s{' '}
-                                                    <strong>
-                                                        {this.reportedCohortCount.toLocaleString()}
-                                                    </strong>{' '}
-                                                    {this.unitLabel}).
-                                                </>
+                                                    {this.unitLabel} from
+                                                    outside your current cohort
+                                                    - shown here too, but you
+                                                    can hide them via the
+                                                    legend&apos;s Configuration
+                                                    section.
+                                                </div>
                                             )}
                                         </div>
-                                        {this.hasExtraNonCohortSamples && (
-                                            <div style={{ marginTop: '6px' }}>
-                                                The map was built using an
-                                                additional{' '}
-                                                <strong>
-                                                    {(
-                                                        this
-                                                            .reportedEmbeddingSampleSize -
-                                                        this
-                                                            .reportedTotalSampleCount
-                                                    ).toLocaleString()}
-                                                </strong>{' '}
-                                                {this.unitLabel} from outside
-                                                your current cohort - shown here
-                                                too, but you can hide them via
-                                                the legend&apos;s Configuration
-                                                section.
-                                            </div>
-                                        )}
-                                    </div>
-                                }
-                            >
-                                <i
-                                    className={
-                                        this.hasEmbeddingWarning
-                                            ? 'fa fa-exclamation-triangle'
-                                            : 'fa fa-info-circle'
                                     }
-                                    style={{
-                                        color: this.hasEmbeddingWarning
-                                            ? '#e0a800'
-                                            : '#888',
-                                        cursor: 'help',
-                                    }}
-                                />
-                            </DefaultTooltip>
-                        )}
+                                >
+                                    <i
+                                        className={
+                                            this.hasEmbeddingWarning
+                                                ? 'fa fa-exclamation-triangle'
+                                                : 'fa fa-info-circle'
+                                        }
+                                        style={{
+                                            color: this.hasEmbeddingWarning
+                                                ? '#e0a800'
+                                                : '#888',
+                                            cursor: 'help',
+                                        }}
+                                    />
+                                </DefaultTooltip>
+                            )}
                         {isFilterActive && (
                             <div style={{ display: 'flex', gap: '6px' }}>
                                 <button
