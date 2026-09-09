@@ -184,6 +184,10 @@ export class MultiSelectionTable extends React.Component<
                             cellMargin={cellMargin}
                             dataTest="gene-column-header"
                             options={this.geneFilterDropdownOptions}
+                            combineOperator={this.geneFilterOperator}
+                            onToggleCombineOperator={
+                                this.toggleGeneFilterOperator
+                            }
                         >
                             <span>{columnKey}</span>
                         </GeneFilterDropdown>
@@ -764,9 +768,40 @@ export class MultiSelectionTable extends React.Component<
         if (activeFilters.length === 0) {
             return data;
         }
-        // a gene is kept if it matches ANY checked filter (union, not
-        // intersection) — the dropdown presents independent checkboxes
-        return _.filter(data, row => activeFilters.some(f => f(row)));
+        // union: a gene is kept if it matches ANY checked filter;
+        // intersection: it must match ALL of them
+        return this.geneFilterOperator === SelectionOperatorEnum.INTERSECTION
+            ? _.filter(data, row => activeFilters.every(f => f(row)))
+            : _.filter(data, row => activeFilters.some(f => f(row)));
+    }
+
+    private geneFilterOperatorStorageKey() {
+        return `${this.props.tableType}_geneFilterOperator`;
+    }
+
+    @observable private _geneFilterOperator: SelectionOperatorEnum;
+
+    @computed get geneFilterOperator(): SelectionOperatorEnum {
+        if (this._geneFilterOperator) {
+            return this._geneFilterOperator;
+        }
+        return (localStorage.getItem(
+            this.geneFilterOperatorStorageKey()
+        ) as SelectionOperatorEnum) === SelectionOperatorEnum.INTERSECTION
+            ? SelectionOperatorEnum.INTERSECTION
+            : SelectionOperatorEnum.UNION;
+    }
+
+    @action.bound
+    toggleGeneFilterOperator() {
+        this._geneFilterOperator =
+            this.geneFilterOperator === SelectionOperatorEnum.INTERSECTION
+                ? SelectionOperatorEnum.UNION
+                : SelectionOperatorEnum.INTERSECTION;
+        localStorage.setItem(
+            this.geneFilterOperatorStorageKey(),
+            this._geneFilterOperator
+        );
     }
 
     @computed get flattenedFilters() {

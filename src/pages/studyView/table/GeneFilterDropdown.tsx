@@ -6,6 +6,7 @@ import { DefaultTooltip } from 'cbioportal-frontend-commons';
 import LabeledCheckbox from 'shared/components/labeledCheckbox/LabeledCheckbox';
 import styles from 'pages/studyView/table/tables.module.scss';
 import { ICON_FILTER_OFF, ICON_FILTER_ON } from 'shared/lib/Colors';
+import { SelectionOperatorEnum } from 'pages/studyView/TableUtils';
 
 export interface IGeneFilterDropdownOption {
     label: React.ReactNode;
@@ -19,6 +20,8 @@ export interface IGeneFilterDropdownProps {
     options: IGeneFilterDropdownOption[];
     dataTest?: string;
     children?: React.ReactNode;
+    combineOperator?: SelectionOperatorEnum;
+    onToggleCombineOperator?: () => void;
 }
 
 @observer
@@ -40,6 +43,10 @@ export class GeneFilterDropdown extends React.Component<
 
     @computed get isFiltered() {
         return this.props.options.some(option => option.checked);
+    }
+
+    @computed get checkedOptionCount() {
+        return this.props.options.filter(option => option.checked).length;
     }
 
     private get menu() {
@@ -68,6 +75,32 @@ export class GeneFilterDropdown extends React.Component<
                         {option.label}
                     </LabeledCheckbox>
                 ))}
+                {this.checkedOptionCount > 1 &&
+                    this.props.onToggleCombineOperator && (
+                        <div
+                            className={styles.geneFilterDropdownCombineRow}
+                            role="button"
+                            tabIndex={0}
+                            data-test="gene-filter-combine-operator"
+                            onClick={this.props.onToggleCombineOperator}
+                        >
+                            <DefaultTooltip
+                                overlay={`${this.props.combineOperator} of the checked filters`}
+                            >
+                                <span>
+                                    {this.props.combineOperator}{' '}
+                                    <i
+                                        className={
+                                            this.props.combineOperator ===
+                                            SelectionOperatorEnum.INTERSECTION
+                                                ? styles.intersection
+                                                : styles.union
+                                        }
+                                    />
+                                </span>
+                            </DefaultTooltip>
+                        </div>
+                    )}
             </div>
         );
     }

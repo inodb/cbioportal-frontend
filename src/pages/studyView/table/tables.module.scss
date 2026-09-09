@@ -161,6 +161,18 @@ $study-view-table-icon-size: 10px;
     color: #999999;
 }
 
+.geneFilterDropdownCombineRow {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #e5e5e5;
+    cursor: pointer;
+    color: #999999;
+
+    &:hover {
+        color: #333333;
+    }
+}
+
 .gistic,
 .mutsig,
 .cancerGenesRow > img {
