@@ -1,4 +1,4 @@
-.userProfilePage {
+.accountPage {
     margin-bottom: 20px;
 
     h1 {
@@ -53,4 +53,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #eef4fb;
+    color: #2c5987;
+    font-size: 11px;
 }

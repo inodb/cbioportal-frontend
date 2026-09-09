@@ -3,7 +3,7 @@ import { observer } from 'mobx-react';
 import Helmet from 'react-helmet';
 import { getBrowserWindow } from 'cbioportal-frontend-commons';
 import { PageLayout } from 'shared/components/PageLayout/PageLayout';
-import { UserProfilePageStore } from './UserProfilePageStore';
+import { AccountPageStore } from './AccountPageStore';
 import FeatureFlagsSection from './FeatureFlagsSection';
 import VirtualStudiesSection from './VirtualStudiesSection';
 import ComparisonGroupsSection from './ComparisonGroupsSection';
@@ -12,8 +12,8 @@ import UserRoleSection from './UserRoleSection';
 import styles from './styles.module.scss';
 
 @observer
-export default class UserProfilePage extends React.Component<{}, {}> {
-    private store: UserProfilePageStore;
+export default class AccountPage extends React.Component<{}, {}> {
+    private store: AccountPageStore;
 
     private get appStore() {
         return getBrowserWindow().globalStores.appStore;
@@ -21,13 +21,13 @@ export default class UserProfilePage extends React.Component<{}, {}> {
 
     constructor(props: any) {
         super(props);
-        this.store = new UserProfilePageStore();
+        this.store = new AccountPageStore();
     }
 
     public render() {
         return (
             <PageLayout className={'whiteBackground'}>
-                <div className={styles.userProfilePage}>
+                <div className={styles.accountPage}>
                     <Helmet>
                         <title>
                             {'cBioPortal for Cancer Genomics::My Account'}

@@ -12,7 +12,7 @@ import { getServerConfig } from 'config/config';
 import { SUPPORTED_DAT_METHODS } from 'shared/constants';
 import { UserRoleStore } from './UserRoleStore';
 
-export class UserProfilePageStore {
+export class AccountPageStore {
     public readonly userRoleStore = new UserRoleStore();
 
     readonly virtualStudies = remoteData<VirtualStudy[]>({

@@ -53,7 +53,7 @@ export class DataAccessTokensDropdown extends React.Component<
         const listItems = [
             {
                 id: 'myAccount',
-                action: <Link to="/user-profile">My Account</Link>,
+                action: <Link to="/account">My Account</Link>,
                 hide: false,
             },
             {

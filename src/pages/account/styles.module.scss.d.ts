@@ -1,4 +1,6 @@
 declare const styles: {
+  readonly "accountPage": string;
+  readonly "badge": string;
   readonly "card": string;
   readonly "flagList": string;
   readonly "itemList": string;
@@ -6,7 +8,6 @@ declare const styles: {
   readonly "roleOptions": string;
   readonly "sectionGrid": string;
   readonly "subtext": string;
-  readonly "userProfilePage": string;
 };
 export = styles;
 
