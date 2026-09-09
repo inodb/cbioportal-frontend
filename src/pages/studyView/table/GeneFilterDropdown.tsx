@@ -83,6 +83,15 @@ export class GeneFilterDropdown extends React.Component<
                             tabIndex={0}
                             data-test="gene-filter-combine-operator"
                             onClick={this.props.onToggleCombineOperator}
+                            onKeyDown={(event: React.KeyboardEvent) => {
+                                if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                ) {
+                                    event.preventDefault();
+                                    this.props.onToggleCombineOperator!();
+                                }
+                            }}
                         >
                             <DefaultTooltip
                                 overlay={`${this.props.combineOperator} of the checked filters`}
