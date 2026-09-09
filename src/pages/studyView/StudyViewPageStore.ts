@@ -10143,6 +10143,11 @@ export class StudyViewPageStore
     }
 
     @computed get o2glFilterGenes(): string[] {
+        if (
+            !this.appStore.featureFlagStore.has(FeatureFlagEnum.ONCOTREE2GENES)
+        ) {
+            return [];
+        }
         return Array.from(
             getO2glGeneSetForCodes(
                 this.oncotreeCodeValues.result,
