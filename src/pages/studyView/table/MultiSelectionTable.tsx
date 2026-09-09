@@ -948,7 +948,7 @@ export class MultiSelectionTable extends React.Component<
                 ),
                 checked: this.isFilteredByDriverGenes,
                 onToggle: checked => this.toggleDriverGenesFilter(checked),
-                dataTest: 'gene-filter-option-mutsig',
+                dataTest: 'gene-filter-option-driver-genes',
             });
         }
         return options;

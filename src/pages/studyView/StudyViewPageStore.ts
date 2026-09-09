@@ -10122,6 +10122,10 @@ export class StudyViewPageStore
     // cancer type.
     @computed get oncotreeCodeColorMap(): { [code: string]: string } {
         const map: { [code: string]: string } = {};
+        if (!this.isO2glFilterAvailable) {
+            // avoid triggering the cancerTypes fetch when O2GL isn't in use
+            return map;
+        }
         this.cancerTypes.result.forEach(ct => {
             if (ct.dedicatedColor) {
                 map[ct.cancerTypeId.toUpperCase()] = ct.dedicatedColor;
@@ -10134,6 +10138,10 @@ export class StudyViewPageStore
     // "Dedifferentiated Liposarcoma") for the gene tooltip.
     @computed get oncotreeCodeNameMap(): { [code: string]: string } {
         const map: { [code: string]: string } = {};
+        if (!this.isO2glFilterAvailable) {
+            // avoid triggering the cancerTypes fetch when O2GL isn't in use
+            return map;
+        }
         this.cancerTypes.result.forEach(ct => {
             if (ct.name) {
                 map[ct.cancerTypeId.toUpperCase()] = ct.name;

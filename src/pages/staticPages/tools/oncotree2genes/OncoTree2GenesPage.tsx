@@ -89,6 +89,7 @@ const COLUMNS: Column<O2glRow>[] = [
 ];
 const REPO_URL = 'https://github.com/SuhasiniLulla/OncoTree2Genes-LLM';
 const ONCOTREE_BASE = 'https://inodb.github.io/oncotree/?embed=1';
+const ONCOTREE_ORIGIN = new URL(ONCOTREE_BASE).origin;
 const ROWS_PER_PAGE = 10;
 
 // Per-code gene lists for the embedded OncoTree, sent once via postMessage;
@@ -204,7 +205,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
     // the search (so the tables filter to that cancer type).
     React.useEffect(() => {
         function onMessage(event: MessageEvent) {
-            if (!event.data) {
+            if (event.origin !== ONCOTREE_ORIGIN || !event.data) {
                 return;
             }
             if (event.data.type === 'oncotree-ready') {
@@ -324,7 +325,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
                     type: 'oncotree-annotations',
                     annotations: ONCOTREE_ANNOTATIONS,
                 },
-                '*'
+                ONCOTREE_ORIGIN
             );
         }
     }, [treeReady]);
@@ -334,7 +335,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
         if (treeReady && iframeRef.current && iframeRef.current.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
                 { type: 'oncotree-search', query: debouncedSearch.trim() },
-                '*'
+                ONCOTREE_ORIGIN
             );
         }
     }, [treeReady, debouncedSearch]);
@@ -344,7 +345,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
         if (treeReady && iframeRef.current && iframeRef.current.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
                 { type: 'oncotree-selection', codes: selectedCodes },
-                '*'
+                ONCOTREE_ORIGIN
             );
         }
     }, [treeReady, selectedCodes]);
@@ -361,12 +362,20 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
                 <p>
                     OncoTree2Genes-LLM is a large-language-model-generated
                     mapping from{' '}
-                    <a href="https://oncotree.info" target="_blank">
+                    <a
+                        href="https://oncotree.info"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
                         OncoTree
                     </a>{' '}
                     cancer type codes to relevant genes. Method and dataset is
                     further described at{' '}
-                    <a href={REPO_URL} target="_blank">
+                    <a
+                        href={REPO_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
                         github.com/SuhasiniLulla/OncoTree2Genes-LLM
                     </a>
                     .

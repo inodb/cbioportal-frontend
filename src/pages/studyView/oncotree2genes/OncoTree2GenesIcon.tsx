@@ -23,16 +23,35 @@ function toHex(color: string): string {
     return hex;
 }
 
+// Extract 0-255 r/g/b from either "#rrggbb" or "rgb(a)(r, g, b[, a])" —
+// the two formats a canvas 2d context's fillStyle can normalize to.
+function parseRgb(color: string): [number, number, number] | undefined {
+    const hexMatch = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+    if (hexMatch) {
+        return [
+            parseInt(hexMatch[1], 16),
+            parseInt(hexMatch[2], 16),
+            parseInt(hexMatch[3], 16),
+        ];
+    }
+    const rgbMatch = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(color);
+    if (rgbMatch) {
+        return [
+            parseInt(rgbMatch[1], 10),
+            parseInt(rgbMatch[2], 10),
+            parseInt(rgbMatch[3], 10),
+        ];
+    }
+    return undefined;
+}
+
 // Pick black/white text for legibility on an arbitrary fill color.
 function contrastingTextColor(fill: string): string {
-    const hex = toHex(fill);
-    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-    if (!m) {
+    const rgb = parseRgb(toHex(fill));
+    if (!rgb) {
         return '#ffffff';
     }
-    const r = parseInt(m[1], 16);
-    const g = parseInt(m[2], 16);
-    const b = parseInt(m[3], 16);
+    const [r, g, b] = rgb;
     // perceived luminance (0-255)
     const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
     return luminance > 150 ? '#000000' : '#ffffff';
