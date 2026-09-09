@@ -269,6 +269,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                             }}
                         >
                             <button
+                                data-test="embeddings-lock-map-button"
                                 onClick={onToggleLockMap}
                                 title="Use the same map in every panel"
                                 style={{

@@ -24,6 +24,7 @@ const PAN_BUTTON = '[data-test="embeddings-pan-button"]';
 const SELECT_BUTTON = '[data-test="embeddings-select-button"]';
 const CLEAR_BUTTON = '[data-test="embeddings-clear-button"]';
 const MAKE_GLOBAL_BUTTON = '[data-test="embeddings-make-global-button"]';
+const LOCK_MAP_BUTTON = '[data-test="embeddings-lock-map-button"]';
 const panelCountButton = (n: number) =>
     `[data-test="embeddings-panel-count-${n}"]`;
 
@@ -178,7 +179,7 @@ test.describe('embeddings tab interactions', () => {
             await expect(page.locator(panelCountButton(1))).toBeVisible();
         });
 
-        test('hides the per-embedding status sentence once a second panel is open', async ({
+        test('hides the per-embedding status sentence once Lock Map is disabled with multiple panels open', async ({
             page,
         }) => {
             // Single panel: the status bar reports this one panel's map and
@@ -188,17 +189,25 @@ test.describe('embeddings tab interactions', () => {
                 /[\d,]+ samples embedded in/
             );
 
-            // A second panel can have a completely different map selected,
-            // so there's no longer a single "the" map/sample-size the
-            // status bar could report - it should show nothing here rather
-            // than an arbitrary/stale one of the two panels' numbers.
+            // Lock Map defaults to on, so opening a second panel still
+            // shows one shared map/sample-size in the status bar.
             await page.locator(panelCountButton(2)).click();
             await expect(page.locator(VIZ)).toHaveCount(2, { timeout: 30000 });
+            await expect(page.locator(STATUS_BAR)).toContainText(
+                /[\d,]+ samples embedded in/
+            );
+
+            // Disabling Lock Map lets each panel pick a different map, so
+            // there's no longer a single "the" map/sample-size to report.
+            await page
+                .locator(LOCK_MAP_BUTTON)
+                .first()
+                .click();
             await expect(page.locator(STATUS_BAR)).not.toContainText(
                 /embedded in/
             );
 
-            // Switching back to a single panel restores it.
+            // Switching back to a single panel restores it regardless.
             await page.locator(panelCountButton(1)).click();
             await expect(page.locator(VIZ)).toHaveCount(1);
             await expect(page.locator(STATUS_BAR)).toContainText(
