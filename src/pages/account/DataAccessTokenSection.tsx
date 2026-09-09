@@ -23,20 +23,17 @@ export default class DataAccessTokenSection extends React.Component<
     render() {
         const { supported, dataAccessTokens } = this.props;
 
+        if (!supported) {
+            return null;
+        }
+
         return (
             <div className={styles.card}>
                 <h4>Data Access Token</h4>
-                {!supported && (
-                    <p className={styles.subtext}>
-                        Data access tokens are not available on this cBioPortal
-                        instance.
-                    </p>
-                )}
-                {supported && dataAccessTokens.isPending && (
+                {dataAccessTokens.isPending && (
                     <LoadingIndicator isLoading={true} />
                 )}
-                {supported &&
-                    !dataAccessTokens.isPending &&
+                {!dataAccessTokens.isPending &&
                     (dataAccessTokens.result!.length === 0 ? (
                         <p className={styles.subtext}>
                             You have not generated a data access token.
@@ -69,15 +66,13 @@ export default class DataAccessTokenSection extends React.Component<
                             })}
                         </ul>
                     ))}
-                {supported && (
-                    <button
-                        className="btn btn-primary btn-sm"
-                        style={{ marginTop: 10 }}
-                        onClick={() => this.generateToken()}
-                    >
-                        Generate New Token
-                    </button>
-                )}
+                <button
+                    className="btn btn-primary btn-sm"
+                    style={{ marginTop: 10 }}
+                    onClick={() => this.generateToken()}
+                >
+                    Generate New Token
+                </button>
             </div>
         );
     }

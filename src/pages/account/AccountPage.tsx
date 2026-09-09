@@ -3,8 +3,9 @@ import { observer } from 'mobx-react';
 import Helmet from 'react-helmet';
 import { getBrowserWindow } from 'cbioportal-frontend-commons';
 import { PageLayout } from 'shared/components/PageLayout/PageLayout';
+import { openSocialAuthWindow } from 'shared/lib/openSocialAuthWindow';
+import { getLoadConfig, getServerConfig } from 'config/config';
 import { AccountPageStore } from './AccountPageStore';
-import FeatureFlagsSection from './FeatureFlagsSection';
 import VirtualStudiesSection from './VirtualStudiesSection';
 import ComparisonGroupsSection from './ComparisonGroupsSection';
 import DataAccessTokenSection from './DataAccessTokenSection';
@@ -35,16 +36,29 @@ export default class AccountPage extends React.Component<{}, {}> {
                     </Helmet>
 
                     <h1>My Account</h1>
-                    {this.appStore.userName && (
+                    {this.appStore.isLoggedIn ? (
                         <p className={styles.subtext}>
                             Signed in as {this.appStore.userName}
                         </p>
+                    ) : (
+                        <div className={styles.subtext}>
+                            <p>Not logged in.</p>
+                            {!getLoadConfig().hide_login &&
+                                !getServerConfig().skin_hide_logout_button &&
+                                this.appStore.isSocialAuthenticated && (
+                                    <button
+                                        className="btn btn-default btn-sm"
+                                        onClick={() =>
+                                            openSocialAuthWindow(this.appStore)
+                                        }
+                                    >
+                                        Login
+                                    </button>
+                                )}
+                        </div>
                     )}
 
                     <div className={styles.sectionGrid}>
-                        <FeatureFlagsSection
-                            featureFlagStore={this.appStore.featureFlagStore}
-                        />
                         <VirtualStudiesSection
                             virtualStudies={this.store.virtualStudies}
                         />

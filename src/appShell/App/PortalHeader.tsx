@@ -13,13 +13,15 @@ import { Dropdown } from 'react-bootstrap';
 import { DataAccessTokensDropdown } from '../../shared/components/dataAccessTokens/DataAccessTokensDropdown';
 import { getLoadConfig, getServerConfig } from 'config/config';
 import FontAwesome from 'react-fontawesome';
+import FeatureFlagsModal from '../../shared/components/featureFlags/FeatureFlagsModal';
+import { hasEnableableFeatureFlags } from '../../shared/featureFlags';
 
 @observer
 export default class PortalHeader extends React.Component<
     { appStore: AppStore },
-    { datDropdownOpen: boolean }
+    { datDropdownOpen: boolean; featureFlagsModalOpen: boolean }
 > {
-    state = { datDropdownOpen: false };
+    state = { datDropdownOpen: false, featureFlagsModalOpen: false };
 
     private handleDatDropdownToggle = (isOpen: boolean) => {
         if (isOpen) {
@@ -195,6 +197,36 @@ export default class PortalHeader extends React.Component<
                     </nav>
                 </div>
                 <div id="rightHeaderContent">
+                    <If
+                        condition={hasEnableableFeatureFlags(
+                            this.props.appStore.featureFlagStore,
+                            getServerConfig().app_name
+                        )}
+                    >
+                        <a
+                            id="feature-flags-icon"
+                            title="Experimental features available"
+                            onClick={() =>
+                                this.setState({
+                                    featureFlagsModalOpen: true,
+                                })
+                            }
+                        >
+                            <FontAwesome name="flask" />
+                        </a>
+                    </If>
+                    <If condition={this.state.featureFlagsModalOpen}>
+                        <FeatureFlagsModal
+                            featureFlagStore={
+                                this.props.appStore.featureFlagStore
+                            }
+                            onHide={() =>
+                                this.setState({
+                                    featureFlagsModalOpen: false,
+                                })
+                            }
+                        />
+                    </If>
                     <If
                         condition={
                             !getLoadConfig().hide_login &&

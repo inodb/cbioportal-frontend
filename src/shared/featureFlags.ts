@@ -1,3 +1,5 @@
+import { FeatureFlagStore } from './FeatureFlagStore';
+
 export enum FeatureFlagEnum {
     LEFT_TRUNCATION_ADJUSTMENT = 'LEFT_TRUNCATION_ADJUSTMENT',
     PATIENT_MRNA_TAB = 'patientMRNATab',
@@ -29,6 +31,12 @@ export interface FeatureFlagMetadata {
     alwaysOnPortals?: string[];
     /** per-portal overrides of description/exampleUrl above */
     portalOverrides?: { [appName: string]: FeatureFlagPortalOverride };
+    /**
+     * if set, this flag only has an effect for these specific studies (not
+     * just "shown as an example there" - genuinely a no-op elsewhere), so
+     * it's only worth showing to a user who can access at least one of them.
+     */
+    relevantStudyIds?: string[];
 }
 
 export const FEATURE_FLAG_METADATA: {
@@ -44,6 +52,7 @@ export const FEATURE_FLAG_METADATA: {
         userOptIn: true,
         exampleUrl:
             '/study?id=heme_onc_nsclc_genie_bpc&featureFlags=LEFT_TRUNCATION_ADJUSTMENT',
+        relevantStudyIds: ['heme_onc_nsclc_genie_bpc'],
     },
     [FeatureFlagEnum.PATIENT_MRNA_TAB]: {
         description:
@@ -83,6 +92,42 @@ export function getFeatureFlagDisplayInfo(
         exampleUrl: override?.exampleUrl ?? meta.exampleUrl,
         alwaysOn: !!appName && !!meta.alwaysOnPortals?.includes(appName),
     };
+}
+
+export function isFeatureFlagStudySpecific(flag: FeatureFlagEnum): boolean {
+    const relevantStudyIds = FEATURE_FLAG_METADATA[flag].relevantStudyIds;
+    return !!relevantStudyIds && relevantStudyIds.length > 0;
+}
+
+export function isFeatureFlagRelevantForStudies(
+    flag: FeatureFlagEnum,
+    accessibleStudyIds: string[]
+): boolean {
+    const relevantStudyIds = FEATURE_FLAG_METADATA[flag].relevantStudyIds;
+    if (!relevantStudyIds || relevantStudyIds.length === 0) {
+        return true;
+    }
+    return relevantStudyIds.some(id => accessibleStudyIds.includes(id));
+}
+
+/**
+ * Cheap, synchronous check for whether there's anything worth surfacing a
+ * "you can enable features" affordance for. Ignores study-level access
+ * restrictions (that requires a network round trip) - a flag scoped to a
+ * study the user can't see may cause an occasional false positive here.
+ */
+export function hasEnableableFeatureFlags(
+    featureFlagStore: FeatureFlagStore,
+    appName: string | undefined | null
+): boolean {
+    return Object.values(FeatureFlagEnum).some(flag => {
+        const { alwaysOn } = getFeatureFlagDisplayInfo(flag, appName);
+        return (
+            !alwaysOn &&
+            isFeatureFlagOptable(flag, appName) &&
+            !featureFlagStore.has(flag)
+        );
+    });
 }
 
 export function isFeatureFlagOptable(
