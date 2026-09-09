@@ -47,31 +47,18 @@ export interface IEmbeddingsPanelProps {
     store: StudyViewPageStore;
     panelIndex: 1 | 2 | 3 | 4;
     panelCount: number;
-    // Shared across every panel so Pan/Select applies to all of them at once.
     selectionMode: 'none' | 'lasso';
     onSelectionModeChange: (mode: 'none' | 'lasso') => void;
-    // Shared across every panel so the same tooltip fields show everywhere.
     tooltipFields: Set<string>;
     onTooltipFieldsChange: (fields: Set<string>) => void;
-    // Shared across every panel so hiding a QC category (via the primary
-    // panel's legend Configuration section) applies everywhere.
     hiddenQcCategories: Set<string>;
     onToggleQcCategoryVisibility: (category: string) => void;
-    // Shared across every panel so hiding a legend category's underlying
-    // SAMPLES (via clicking it, or Hide All/Show All) filters every
-    // panel's points, even one colored by a completely different
-    // attribute with non-overlapping category names. This panel keeps its
-    // own category-toggle state locally (see localHiddenCategories) purely
-    // to drive its own legend UI, and contributes the resulting
-    // sample/patient identity keys here via onSetPanelHiddenSampleKeys.
+    // Cross-panel sample-identity filter (see ownHiddenSampleKeys) - this
+    // panel keeps its own category-toggle state locally purely to drive
+    // its own legend UI, and contributes to this via
+    // onSetPanelHiddenSampleKeys.
     hiddenSampleKeys: Set<string>;
     onSetPanelHiddenSampleKeys: (keys: Set<string>) => void;
-    // Reports this panel's own total/visible sample counts up to the
-    // wrapper (plain numbers, not Sets - no reference-instability risk),
-    // so it can show a single "X / Y visible" status regardless of which
-    // panel's legend selection is actually driving the cross-panel
-    // filter. Every panel's visibleSampleCount already reflects the same
-    // shared hiddenSampleKeys, so any one of them is representative.
     onReportSampleCounts?: (info: {
         total: number;
         visible: number;
@@ -80,21 +67,11 @@ export interface IEmbeddingsPanelProps {
         embeddingType: 'patients' | 'samples';
         cohortCount: number;
     }) => void;
-    // Increments whenever the status bar's "Clear" button is clicked -
-    // every panel resets both its own hidden-category and lasso-selection
-    // filters when this changes (see componentDidUpdate).
     clearFilterRequestId: number;
-    // The primary panel's live viewState. A plain mutable holder (not a
-    // reactive prop) - the primary panel writes to it on every pan/zoom
-    // frame via onPrimaryViewStateChange, and a locked panel polls it via
-    // requestAnimationFrame (see startLockPolling) rather than receiving
-    // pushed updates, so panning/zooming never forces every panel to
-    // re-render.
+    // Plain mutable holder, not a reactive prop - see EmbeddingsTab's
+    // primaryViewStateHolder.
     primaryViewStateHolder: { current: ViewState | null };
     onPrimaryViewStateChange: (viewState: ViewState) => void;
-    // Single toggle shared by every panel (shown only on the primary
-    // panel's controls): when on, every non-primary panel follows the
-    // primary panel's pan/zoom instead of moving independently.
     isLockedToPrimary: boolean;
     onToggleLockedToPrimary: () => void;
     // When true, every panel shows the same map (driven from the status
@@ -106,14 +83,12 @@ export interface IEmbeddingsPanelProps {
     onSetPanelCount: (target: number) => void;
 }
 
-// Base URL for embedding data
 const EMBEDDING_BASE_URL =
     'https://datahub.assets.cbioportal.org/embeddings/msk_mosaic_2026';
 
-// Module-level singleton remote data loaders for embeddings
-// These are shared across all component instances to prevent duplicate fetches
+// Module-level singleton so every panel shares one fetch.
 const boehmHeData = remoteData<EmbeddingData>({
-    await: () => [], // No dependencies - invoke once immediately and cache
+    await: () => [],
     invoke: async () => {
         const response = await fetch(`${EMBEDDING_BASE_URL}/umap_he_50k.json`);
         if (!response.ok) {
@@ -128,10 +103,9 @@ export class EmbeddingsPanel extends React.Component<
     IEmbeddingsPanelProps,
     {}
 > {
-    // Use @observable.ref to only track reference changes, not deep changes
-    // This prevents MobX from trying to deeply traverse the object, which could cause
-    // issues with circular references in custom attributes (the 'data' property contains
-    // ClinicalData items that reference back to the parent attribute)
+    // .ref, not deep: custom attributes' 'data' can reference back to
+    // their own parent attribute, and MobX's deep enhancer would try to
+    // traverse that cycle.
     @observable.ref private selectedColoringOption?: ColoringMenuOmnibarOption;
     @observable private coloringLogScale = false;
     @observable private mutationTypeEnabled = true;
@@ -147,17 +121,11 @@ export class EmbeddingsPanel extends React.Component<
     @observable private windowHeight = window.innerHeight;
     @observable private legendCollapsed = false;
     @observable.ref private pinnedPoint: EmbeddingPoint | null = null;
-    // This panel's own hidden legend categories - local, not shared, since
-    // it purely drives this panel's own legend checkboxes. The resulting
-    // set of hidden sample/patient identity keys is what actually gets
-    // shared across panels (see ownHiddenSampleKeys and the reaction that
-    // pushes it up via onSetPanelHiddenSampleKeys).
+    // This panel's own legend toggle state - see ownHiddenSampleKeys for
+    // how it's translated into the shared cross-panel filter.
     @observable.ref private localHiddenCategories = new Set<string>();
-    // A lasso selection, kept local for the same reason: it's a candidate
-    // filter shown in the shared status bar, applied globally only when
-    // the user clicks "Make Global" (see applyFilterGlobally). null means
-    // no lasso filter is active; folded into ownHiddenSampleKeys below as
-    // "everything outside the lasso is also hidden."
+    // null means no lasso filter active; applied globally only via
+    // applyFilterGlobally (the "Make Global" button).
     @observable.ref private lassoSelectedKeys: Set<string> | null = null;
     private urlParameterReactionDisposer?: () => void;
     private urlSyncReactionDisposer?: () => void;
@@ -168,22 +136,16 @@ export class EmbeddingsPanel extends React.Component<
     private sampleCountsReportReactionDisposer?: () => void;
     private viewStateInitialized = false;
     private centerViewTimeoutId?: ReturnType<typeof setTimeout>;
-    // mobx-react's @observer makes the whole `this.props` object reactive
-    // as one unit, so any @computed that reads `this.props.X` depends on
-    // EVERY prop this panel receives, not just X - e.g. it gets needlessly
-    // invalidated whenever the shared Pan/Select mode changes, cascading
-    // into a full plot data rebuild and a multi-second deck.gl GPU redraw.
-    // `store` never changes for this panel's lifetime, so cache it as a
-    // plain (non-reactive) field and read that everywhere instead.
+    // mobx-react's @observer makes `this.props` reactive as one unit, so
+    // any @computed reading `this.props.X` gets invalidated by ANY prop
+    // change, not just X - e.g. Pan/Select toggling was cascading into a
+    // full plot data rebuild. `store` never changes, so cache it as a
+    // plain field instead of reading it through props.
     private readonly store = this.props.store;
     // hiddenSampleKeys/hiddenQcCategories/tooltipFields DO need to stay
-    // reactive (their actual values change), so they can't just be
-    // cached once like `store` - instead, mirror them into their own
-    // observables that only get written (in componentDidUpdate, using
-    // React's own prevProps snapshot rather than mobx-react's reactive
-    // props) when the incoming prop's reference genuinely changes. Any
-    // @computed reads the mirror, not this.props, so it's no longer
-    // invalidated by unrelated prop churn (e.g. Pan/Select toggling).
+    // reactive, so mirror them into their own observables, written only
+    // in componentDidUpdate (via React's prevProps, not mobx-react's
+    // reactive props) when the prop reference actually changes.
     @observable.ref private hiddenSampleKeysMirror = this.props
         .hiddenSampleKeys;
     @observable.ref private hiddenQcCategoriesMirror = this.props
@@ -198,11 +160,8 @@ export class EmbeddingsPanel extends React.Component<
         'SAMPLE_TYPE',
     ];
 
-    // The panel's own URL param name for each piece of synced state. Panel 1
-    // keeps the original unsuffixed names for backward compatibility with
-    // already-shared links; panels 2-4 use suffixed names, matching the
-    // codebase's plots_horz_selection/plots_vert_selection fixed-slot
-    // convention.
+    // Panel 1 keeps the unsuffixed name for backward compatibility with
+    // already-shared links; panels 2-4 use suffixed names.
     @computed private get coloringParamName(): string {
         return this.props.panelIndex === 1
             ? 'embeddings_coloring_selection'
@@ -225,13 +184,8 @@ export class EmbeddingsPanel extends React.Component<
         super(props);
         makeObservable(this);
 
-        // Initialize default coloring
         this.initializeDefaultColoring();
 
-        // Initialize map choice from the URL once, up front - a simple
-        // single-value param, not gated on any async data the way
-        // gene-based coloring is. Tooltip fields are shared across every
-        // panel and owned by the wrapper (this.props.tooltipFields).
         const urlWrapper = (this.store as any).urlWrapper;
         const mapFromUrl = urlWrapper?.query?.[this.mapParamName];
         if (mapFromUrl) {
@@ -240,24 +194,15 @@ export class EmbeddingsPanel extends React.Component<
         this.legendCollapsed =
             urlWrapper?.query?.[this.legendCollapsedParamName] === 'true';
 
-        // Listen for window resize events
         this.handleResize = this.handleResize.bind(this);
 
-        // Initialize view state when plot data is computed
-        // Watch the actual rendered data, not the raw embedding data
+        // Debounced: plotData can change reference several times in quick
+        // succession right after mount, and each firing would otherwise
+        // queue its own centerView() before the first has a chance to
+        // flip viewStateInitialized.
         this.viewStateReactionDisposer = reaction(
             () => this.plotData,
             plotData => {
-                // Only initialize ONCE when data first becomes available.
-                // This check alone isn't enough to prevent duplicate
-                // centerView() calls: plotData can change reference
-                // several times in quick succession right after mount
-                // (e.g. as this panel's own hiddenSampleKeys contribution
-                // settles), and each firing would otherwise queue its own
-                // 100ms timeout before the first one has had a chance to
-                // flip viewStateInitialized - so debounce (clear any
-                // pending timeout) and re-check the flag when the timeout
-                // actually fires, not just when it's scheduled.
                 if (
                     plotData &&
                     plotData.length > 0 &&
@@ -266,19 +211,17 @@ export class EmbeddingsPanel extends React.Component<
                     if (this.centerViewTimeoutId !== undefined) {
                         clearTimeout(this.centerViewTimeoutId);
                     }
-                    // Small delay to ensure DeckGL is fully initialized
                     this.centerViewTimeoutId = setTimeout(() => {
                         this.centerViewTimeoutId = undefined;
                         if (!this.viewStateInitialized) {
-                            this.centerView(); // Use the action method
-                            this.viewStateInitialized = true; // Mark as initialized
+                            this.centerView();
+                            this.viewStateInitialized = true;
                         }
                     }, 100);
                 }
             }
         );
 
-        // Set up single URL-driven reaction for state management
         this.urlParameterReactionDisposer = reaction(
             () => {
                 const urlOption = this.coloringFromURLParameter;
@@ -304,9 +247,8 @@ export class EmbeddingsPanel extends React.Component<
                 }
 
                 if (urlOption) {
-                    // URL parameters exist - apply them
-                    // GUARD: Don't update if we already have the same logical value
-                    // This prevents infinite loops when URL sync creates new object references
+                    // Compare logical value, not reference - avoids a
+                    // loop when URL sync creates new object references.
                     const currentAttrId = this.selectedColoringOption?.info
                         ?.clinicalAttribute?.clinicalAttributeId;
                     const currentGeneId = this.selectedColoringOption?.info
@@ -323,7 +265,6 @@ export class EmbeddingsPanel extends React.Component<
                     }
                     this.selectedColoringOption = urlOption;
                 } else if (!hasUrlParams) {
-                    // No URL parameters - set default and sync to URL
                     const defaultOption = this.getDefaultColoringOption();
                     if (defaultOption) {
                         this.selectedColoringOption = defaultOption;
@@ -334,8 +275,6 @@ export class EmbeddingsPanel extends React.Component<
             { fireImmediately: true }
         );
 
-        // Reaction to enable driver annotations when a gene is selected for coloring
-        // This replaces the side effect that was previously in the driverAnnotationsEnabled computed
         this.driverAnnotationReactionDisposer = reaction(
             () => ({
                 entrezGeneId: this.selectedColoringOption?.info?.entrezGeneId,
@@ -343,12 +282,12 @@ export class EmbeddingsPanel extends React.Component<
                     ?.driversAnnotated,
             }),
             ({ entrezGeneId, driversAnnotated }) => {
-                // Enable driver annotations when a gene is selected (not "Cancer Type" which is -3)
-                // and annotations aren't already enabled
+                // -3 is "Cancer Type", -10000 is "None" - neither is a
+                // real gene selection.
                 if (
                     entrezGeneId &&
                     entrezGeneId !== -3 &&
-                    entrezGeneId !== -10000 && // "None" option
+                    entrezGeneId !== -10000 &&
                     !driversAnnotated
                 ) {
                     this.enableDriverAnnotations();
@@ -357,7 +296,6 @@ export class EmbeddingsPanel extends React.Component<
             { fireImmediately: true }
         );
 
-        // Clear pinned tooltip when all filters are cleared (selection count drops to 0)
         this.filterChangeReactionDisposer = reaction(
             () => this.store.numberOfSelectedSamplesInCustomSelection,
             count => {
@@ -367,18 +305,9 @@ export class EmbeddingsPanel extends React.Component<
             }
         );
 
-        // Push this panel's own hidden-category selection up as a set of
-        // sample/patient identity keys, so every panel - regardless of its
-        // own coloring - can filter by the same underlying samples.
-        // Deferred via setTimeout: the wrapper's render reads the shared
-        // union of every panel's contribution, so calling straight into
-        // its action here would mutate that same observable SYNCHRONOUSLY
-        // as part of the very reaction/render flush that's about to read
-        // it - MobX schedules the wrapper to re-render again immediately,
-        // and since that re-render hands this panel a brand new
-        // hiddenSampleKeys Set reference each time, it can cascade into
-        // "Maximum update depth exceeded". Breaking out into its own tick
-        // makes each push a clean, independent update instead.
+        // Deferred via setTimeout: pushing synchronously during the same
+        // render/reaction flush that reads the wrapper's shared union can
+        // cascade into "Maximum update depth exceeded".
         this.hiddenSampleKeysReactionDisposer = reaction(
             () => this.ownHiddenSampleKeys,
             keys => {
@@ -390,23 +319,13 @@ export class EmbeddingsPanel extends React.Component<
             { fireImmediately: true }
         );
 
-        // Report total/visible sample counts up to the wrapper for its
-        // top status bar - plain values, so (unlike the Set above) there's
-        // no risk of a reference-instability feedback loop. Also reports
-        // the embedding's own full construction size and description
-        // (independent of the current study's cohort), for the
-        // "constructed using X samples" info and its explainer tooltip,
-        // shown when no selection/filter is active.
         this.sampleCountsReportReactionDisposer = reaction(
             () => {
                 const allSamples = this.store.samples.result || [];
                 const embeddingType =
                     this.selectedEmbedding?.data.embedding_type || 'samples';
-                // Full cohort size in the SAME unit as the embedding
-                // (patients vs. samples), so it's directly comparable to
-                // totalSampleCount below - only shown in the tooltip when
-                // it's actually larger (i.e. the map covers fewer than
-                // the full cohort).
+                // Same unit as the embedding, so directly comparable to
+                // totalSampleCount.
                 const cohortCount =
                     embeddingType === 'patients'
                         ? new Set(allSamples.map(s => s.patientId)).size
@@ -427,25 +346,16 @@ export class EmbeddingsPanel extends React.Component<
                     this.props.onReportSampleCounts(info);
                 }
             },
-            // Structural (not reference) equality: the tracking function
-            // above always returns a FRESH object literal, so MobX's
-            // default reference-equality comparer would treat every
-            // recompute as "changed" and re-fire the effect even when
-            // every field is identical - which, if something upstream
-            // (e.g. a clinicalDataCache entry that never resolves) keeps
-            // rawPlotData recomputing on its own, becomes a self-sustaining
-            // loop that can trip React's "Maximum update depth exceeded"
-            // guard. Comparing by content lets the reaction actually
-            // settle once the values stop changing, even if the
-            // upstream recomputation itself doesn't.
+            // Structural equality: the tracking function returns a fresh
+            // object every time, so default reference equality would
+            // re-fire the effect on every recompute even when nothing
+            // changed - a risk of a self-sustaining render loop.
             { fireImmediately: true, equals: comparer.structural }
         );
     }
 
     componentDidMount() {
         window.addEventListener('resize', this.handleResize);
-        // A newly-created panel (e.g. from splitting into more panels)
-        // should immediately join the sync if the lock is already on.
         if (this.props.isLockedToPrimary) {
             this.adoptPrimaryViewState();
             this.startLockPolling();
@@ -479,11 +389,6 @@ export class EmbeddingsPanel extends React.Component<
         this.syncReactivePropMirrors(prevProps);
     }
 
-    // See the hiddenSampleKeysMirror/hiddenQcCategoriesMirror/
-    // tooltipFieldsMirror field comments - only write a mirror observable
-    // when React's own prevProps snapshot shows the underlying prop
-    // reference actually changed, so @computed getters that read the
-    // mirror don't get invalidated by unrelated prop churn.
     @action.bound
     private syncReactivePropMirrors(prevProps: IEmbeddingsPanelProps) {
         if (prevProps.hiddenSampleKeys !== this.props.hiddenSampleKeys) {
@@ -503,16 +408,10 @@ export class EmbeddingsPanel extends React.Component<
         this.lassoSelectedKeys = null;
     }
 
-    // Polls the shared viewState holder while locked, rather than
-    // receiving it as a reactive prop - the holder is a plain mutable
-    // object ANY panel can write to on every pan/zoom frame (see its own
-    // comment for why), so this loop is the only way a panel picks up a
-    // change some OTHER panel made. Every panel (not just one "primary"
-    // source) both writes to and polls the same holder while locked, so
-    // panning/zooming any one of them keeps them all in sync. Runs only
-    // while locked, and only this panel re-renders when it actually
-    // adopts a new view (a plain reference check skips the work entirely
-    // when nothing has changed, including reacting to its own writes).
+    // Polls the shared viewState holder rather than receiving it as a
+    // reactive prop, since it's a plain mutable object any panel can
+    // write to every pan/zoom frame - this is how a panel picks up a
+    // change another panel made.
     private lockPollRafId?: number;
 
     private startLockPolling() {
@@ -550,8 +449,6 @@ export class EmbeddingsPanel extends React.Component<
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.handleResize);
-
-        // Clean up reactions
         if (this.viewStateReactionDisposer) {
             this.viewStateReactionDisposer();
         }
@@ -585,7 +482,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     private initializeDefaultColoring() {
-        // Initialize with default coloring - URL parameters will be applied via reaction
         const defaultOption = this.getDefaultColoringOption();
         if (defaultOption) {
             this.selectedColoringOption = defaultOption;
@@ -593,7 +489,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     private getDefaultColoringOption(): ColoringMenuOmnibarOption | undefined {
-        // Return the default coloring option (CANCER_TYPE_DETAILED or None)
         const cancerTypeAttr = this.clinicalAttributes.find(
             attr => attr.clinicalAttributeId === 'CANCER_TYPE_DETAILED'
         );
@@ -618,12 +513,10 @@ export class EmbeddingsPanel extends React.Component<
         selectedOption: string
     ): ColoringMenuOmnibarOption | undefined {
         try {
-            // Parse gene selection (format: "entrezGeneId_undefined" e.g., "1956_undefined")
+            // Gene selection: "entrezGeneId_undefined"
             const geneMatch = selectedOption.match(/^(\d+)_/);
             if (geneMatch) {
                 const entrezGeneId = parseInt(geneMatch[1]);
-
-                // Find the gene in the genes list
                 const gene = this.genes.find(
                     g => g.entrezGeneId === entrezGeneId
                 );
@@ -636,17 +529,13 @@ export class EmbeddingsPanel extends React.Component<
                 }
             }
 
-            // Parse clinical attribute selection (format: "undefined_{...json...}")
-            // This matches PlotsTab's encoding format exactly
+            // Clinical attribute: "undefined_{...json...}", matching
+            // PlotsTab's encoding.
             if (selectedOption.startsWith('undefined_')) {
                 const jsonPart = selectedOption.substring('undefined_'.length);
-
-                // The JSON may have escaped quotes that need to be unescaped
-                // Replace \" with " to handle URL-encoded escaped quotes
                 const unescapedJson = jsonPart.replace(/\\"/g, '"');
                 const clinicalInfo = JSON.parse(unescapedJson);
 
-                // Find the clinical attribute by ID (check both clinical attributes and embedding data fields)
                 const embeddingFields = this.selectedEmbedding?.data
                     ? getEmbeddingDataFields(this.selectedEmbedding.data)
                     : [];
@@ -957,36 +846,30 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get hasExistingURLParameters(): boolean {
-        // Check if there are already URL parameters for embeddings coloring selection
         const embeddingsColoringSelection = (this.store as any).urlWrapper
             ?.query?.[this.coloringParamName];
         return !!embeddingsColoringSelection?.selectedOption;
     }
 
     @computed get genes(): Gene[] {
-        // Use allGenes to match PlotsTab pattern exactly
-        // This provides comprehensive gene search capability in StudyView
         const genesResult = this.store.allGenes;
         return genesResult.isComplete ? genesResult.result || [] : [];
     }
 
-    // Reactive computed property that applies URL parameter once genes are loaded (for genes) or immediately (for clinical attributes)
     @computed get coloringFromURLParameter():
         | ColoringMenuOmnibarOption
         | undefined {
-        // Check if there's a URL parameter for embeddings coloring selection
         const embeddingsColoringSelection = (this.store as any).urlWrapper
             ?.query?.[this.coloringParamName];
         if (embeddingsColoringSelection?.selectedOption) {
             const selectedOption = embeddingsColoringSelection.selectedOption;
 
-            // For gene selections (format: "1956_undefined"), wait for genes to load
+            // Gene selection ("1956_undefined") - wait for genes to load.
             if (selectedOption.match(/^\d+_/)) {
                 if (this.genes.length === 0) {
                     return undefined;
                 }
             }
-            // For clinical attributes (format: "undefined_{...}"), process immediately
 
             const parsedOption = this.parseColoringSelectionFromURL(
                 selectedOption
@@ -999,7 +882,6 @@ export class EmbeddingsPanel extends React.Component<
         return undefined;
     }
 
-    // Effective coloring option (URL parameter is applied via reaction to selectedColoringOption)
     @computed get effectiveColoringOption():
         | ColoringMenuOmnibarOption
         | undefined {
@@ -1007,11 +889,10 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     private isDefaultColoring(option: ColoringMenuOmnibarOption): boolean {
-        // Check if this is the default cancer type coloring
         return (
             option.info?.clinicalAttribute?.clinicalAttributeId ===
                 'CANCER_TYPE_DETAILED' || option.info?.entrezGeneId === -10000
-        ); // "None" option
+        );
     }
 
     @action.bound
@@ -1026,19 +907,9 @@ export class EmbeddingsPanel extends React.Component<
 
     @computed get plotHeight(): number {
         const viewportHeight = this.windowHeight;
-
-        // Bottom axis labels and padding below the plot.
         const bottomPadding = 90;
-
-        // Page chrome above this tab (study header, active filter bar) - the
-        // controls render inside the canvas itself, so there's no separate
-        // toolbar row above the plot to measure.
         const contentTop = 300;
-
-        // At 4 panels the wrapper lays them out as a 2x2 grid (see
-        // EmbeddingsTab.tsx) - two rows share the same vertical budget a
-        // single row would otherwise get, so the whole grid fits within the
-        // viewport instead of forcing a tall page scroll.
+        // 4 panels lay out as a 2x2 grid (see EmbeddingsTab.tsx).
         const rowCount = this.props.panelCount === 4 ? 2 : 1;
         const rowGap = 12;
 
@@ -1048,10 +919,6 @@ export class EmbeddingsPanel extends React.Component<
             bottomPadding -
             (rowCount - 1) * rowGap;
         const calculatedHeight = availableHeight / rowCount;
-
-        // Minimum height for usability - lower when splitting into rows,
-        // since forcing 500px there would defeat the point and force a
-        // scroll anyway.
         const minHeight = rowCount > 1 ? 300 : 500;
         return Math.max(minHeight, calculatedHeight);
     }
@@ -1070,8 +937,6 @@ export class EmbeddingsPanel extends React.Component<
 
     @computed get allEmbeddingOptions(): EmbeddingDataOption[] {
         const options: EmbeddingDataOption[] = [];
-
-        // Only return options for data that has been successfully loaded
         if (boehmHeData.isComplete && boehmHeData.result) {
             options.push({
                 value: 'msk_mosaic_2026_he',
@@ -1088,8 +953,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get embeddingOptions(): EmbeddingDataOption[] {
-        // Filter embedding options to show those that support ANY of the current studies
-        // (Changed from requiring ALL studies to just needing at least one match)
         if (this.currentStudyIds.length === 0) {
             return [];
         }
@@ -1114,8 +977,6 @@ export class EmbeddingsPanel extends React.Component<
             option => option.value === this.selectedEmbeddingValue
         );
 
-        // If the selected embedding is not available for any of the current studies,
-        // fall back to first available option
         if (!availableOption && this.embeddingOptions.length > 0) {
             return this.embeddingOptions[0];
         }
@@ -1137,55 +998,42 @@ export class EmbeddingsPanel extends React.Component<
             : null;
     }
 
-    // Ensure molecular data is loaded for gene-based coloring (similar to PlotsTab pattern)
     readonly molecularDataForColoring = remoteData({
         await: () => {
             const toAwait: any[] = [];
 
             if (
                 this.selectedColoringOption?.info?.entrezGeneId &&
-                this.selectedColoringOption.info.entrezGeneId !== -3 // Not "Cancer Type"
+                this.selectedColoringOption.info.entrezGeneId !== -3
             ) {
                 const entrezGeneId = this.selectedColoringOption.info
                     .entrezGeneId;
                 const queries = [{ entrezGeneId }];
-
-                // Ensure driver annotations are enabled first (reactive dependency)
                 const driverAnnotationsReady = this.driverAnnotationsEnabled;
 
-                // CRITICAL FIX: Explicitly wait for OncoKB and Hotspots data to be fully loaded
-                // This ensures annotatedMutationCache doesn't use stale driver annotation data
+                // Wait for OncoKB/Hotspots before the mutation cache, since
+                // annotatedMutationCache depends on getMutationPutativeDriverInfo
+                // and would otherwise use stale driver annotations.
                 if (
                     driverAnnotationsReady &&
                     this.store.driverAnnotationSettings
                 ) {
-                    // Wait for OncoKB annotation data if enabled
                     if (this.store.driverAnnotationSettings.oncoKb) {
                         toAwait.push(
                             this.store.plotsTabStore
                                 .oncoKbMutationAnnotationForOncoprint
                         );
                     }
-
-                    // Wait for Hotspots data if enabled
                     if (this.store.driverAnnotationSettings.hotspots) {
                         toAwait.push(
                             this.store.plotsTabStore.isHotspotForOncoprint
                         );
                     }
-
-                    // IMPORTANT: Wait for the driver info function itself - this is the key dependency
-                    // The annotatedMutationCache depends on getMutationPutativeDriverInfo, so we need
-                    // to ensure it's ready before we allow the cache to be used
                     toAwait.push(
                         this.store.plotsTabStore.getMutationPutativeDriverInfo
                     );
                 }
 
-                // CRITICAL: Wait for the annotation dependencies BEFORE accessing mutation cache
-                // This ensures that annotatedMutationCache has fresh data computed with proper annotations
-
-                // Add mutation data if enabled
                 if (
                     this.mutationTypeEnabled &&
                     this.store.plotsTabStore.annotatedMutationCache
@@ -1196,8 +1044,6 @@ export class EmbeddingsPanel extends React.Component<
                         )
                     );
                 }
-
-                // Add CNA data if enabled
                 if (
                     this.copyNumberEnabled &&
                     this.store.plotsTabStore.annotatedCnaCache
@@ -1208,8 +1054,6 @@ export class EmbeddingsPanel extends React.Component<
                         )
                     );
                 }
-
-                // Add structural variant data if enabled
                 if (
                     this.structuralVariantEnabled &&
                     this.store.plotsTabStore.structuralVariantCache
@@ -1227,8 +1071,6 @@ export class EmbeddingsPanel extends React.Component<
         invoke: () => Promise.resolve(true),
     });
 
-    // Shared raw plot data - computed once and cached by MobX
-    // Used by plotData, categoryCounts, and categoryColors to avoid redundant computation
     @computed get rawPlotData(): EmbeddingPlotPoint[] {
         if (!this.store.samples.isComplete || !this.selectedEmbedding?.data) {
             return [];
@@ -1236,36 +1078,29 @@ export class EmbeddingsPanel extends React.Component<
 
         const isColoringByGene =
             this.selectedColoringOption?.info?.entrezGeneId &&
-            this.selectedColoringOption.info.entrezGeneId !== -3; // Not "Cancer Type"
+            this.selectedColoringOption.info.entrezGeneId !== -3;
 
-        // Only establish a reactive dependency on the shared, store-level
-        // driver annotation settings when this panel's OWN coloring is
-        // gene-based. driverAnnotationSettings lives on the store, not
-        // per-panel, so an unconditional read here would make every
-        // panel's rawPlotData - and so its whole plot - recompute
-        // whenever ANY OTHER panel's gene selection flips it, even though
-        // driver status has no bearing on a panel colored by something
-        // else.
+        // Only depend on the store-level driverAnnotationSettings when
+        // this panel's own coloring is gene-based, or every panel's
+        // rawPlotData would recompute whenever any OTHER panel's gene
+        // selection flips it.
         if (isColoringByGene) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const _ = this.driverAnnotationsEnabled;
         }
 
-        // If we're coloring by a gene, wait for molecular data to be loaded
         if (
             isColoringByGene &&
             (this.mutationTypeEnabled ||
                 this.copyNumberEnabled ||
                 this.structuralVariantEnabled)
         ) {
-            // Depend on the remoteData to ensure proper loading
             if (!this.molecularDataForColoring.isComplete) {
                 return [];
             }
         }
 
-        // If we're coloring by a clinical attribute, wait for clinical data to be loaded
-        // (skip for embedding data fields which don't use the clinical data cache)
+        // Embedding data fields don't use the clinical data cache.
         if (
             this.selectedColoringOption?.info?.clinicalAttribute &&
             !this.selectedColoringOption.info.clinicalAttribute.clinicalAttributeId.startsWith(
@@ -1280,7 +1115,6 @@ export class EmbeddingsPanel extends React.Component<
             }
         }
 
-        // Call makeEmbeddingScatterPlotData ONCE - this is the expensive operation
         return makeEmbeddingScatterPlotData(
             this.selectedEmbedding.data,
             this.store,
@@ -1292,17 +1126,11 @@ export class EmbeddingsPanel extends React.Component<
         );
     }
 
-    // The sample/patient identity keys this panel's OWN filters currently
-    // cover - what actually gets shared across panels (via the
-    // constructor's reaction), rather than category names or a lasso
-    // point list, so a panel colored by a completely different attribute
-    // still filters the same underlying samples. Combines two
-    // independent local filters (both narrow further, never widen):
-    // hidden legend categories, and a lasso selection (everything OUTSIDE
-    // it is also hidden). Mirrors plotData/categoryCounts' own
-    // selection-transform (a category can be "Unselected" rather than its
-    // original label) so hiding that pseudo-category behaves the same
-    // way here too.
+    // Sample/patient identity keys hidden by this panel's own filters -
+    // shared across panels (via the constructor's reaction) by identity
+    // rather than category name, so a differently-colored panel still
+    // filters the same samples. Combines hidden legend categories and a
+    // lasso selection (everything outside it is also hidden).
     @computed get ownHiddenSampleKeys(): Set<string> {
         const hasCategoryFilter = this.localHiddenCategories.size > 0;
         const hasLassoFilter = this.lassoSelectedKeys !== null;
@@ -1343,53 +1171,44 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get plotData(): EmbeddingPlotPoint[] {
-        // Use the shared rawPlotData computed property (cached by MobX)
         const rawPlotData = this.rawPlotData;
 
         if (rawPlotData.length === 0) {
             return [];
         }
 
-        // Post-process to handle selection state - update displayLabels for better legend consistency
         const selectedPatientIds = this.selectedPatientIds;
         const hasSelection = selectedPatientIds.length > 0;
 
         if (!hasSelection) {
-            // No selection - just return raw plot data without transformation
             return rawPlotData;
         }
         const selectedPatientSet = new Set(selectedPatientIds);
 
         let processedData = rawPlotData.map(point => {
-            // Skip non-cohort samples
             if (point.isInCohort === false) {
                 return point;
             }
 
-            // Check if this point is selected (must have patientId and be in the selected set)
             const hasPatientId = Boolean(point.patientId);
             const isSelected =
                 hasPatientId && selectedPatientSet.has(point.patientId!);
 
             if (!isSelected) {
-                // Update ALL unselected in-cohort points to show "Unselected" in legend with light gray color
                 return {
                     ...point,
                     displayLabel: 'Unselected',
-                    color: '#C8C8C8', // Light gray to match visual rendering
+                    color: '#C8C8C8',
                     strokeColor: '#C8C8C8',
                 };
             }
 
-            // Point is selected - return as is
             return point;
         });
 
-        // Filter out hidden points: the main legend's hide/select is a
-        // cross-panel filter by underlying sample/patient identity (see
-        // hiddenSampleKeys), so it applies even when this panel is colored
-        // by something else entirely; QC categories hidden via
-        // Configuration are still matched by name and shared as-is.
+        // hiddenSampleKeys is the cross-panel identity filter (applies
+        // regardless of this panel's own coloring); hiddenQcCategories is
+        // matched by name.
         const filteredData = processedData.filter(point => {
             const label = point.displayLabel || '';
             const key = point.sampleId || point.patientId || '';
@@ -1402,12 +1221,8 @@ export class EmbeddingsPanel extends React.Component<
         return filteredData;
     }
 
-    // Per-category counts AFTER every active filter (legend hide/select,
-    // lasso selection, cross-panel selection) - shown in the legend
-    // alongside categoryCounts' raw/unfiltered totals as "visible / total"
-    // so a category whose points got filtered out (by this panel's own
-    // toggles or another panel's lasso selection) doesn't look unchanged
-    // just because its raw total is still the same.
+    // Per-category counts after every active filter - shown alongside
+    // categoryCounts' raw totals as "visible / total" in the legend.
     @computed get visibleCategoryCounts(): Map<string, number> {
         const counts = new Map<string, number>();
         this.plotData.forEach(point => {
@@ -1417,21 +1232,20 @@ export class EmbeddingsPanel extends React.Component<
         return counts;
     }
 
+    // Same transform as plotData, but unfiltered - used for the legend's
+    // raw/unfiltered totals.
     @computed get categoryCounts(): Map<string, number> {
-        // Use the shared rawPlotData computed property (cached by MobX)
         const rawPlotData = this.rawPlotData;
 
         if (rawPlotData.length === 0) {
             return new Map();
         }
 
-        // Apply the same post-processing logic as plotData but without filtering
         const selectedPatientIds = this.selectedPatientIds;
         const hasSelection = selectedPatientIds.length > 0;
 
         let processedData;
         if (!hasSelection) {
-            // No selection - use raw data without transformation
             processedData = rawPlotData;
         } else {
             const selectedPatientSet = new Set(selectedPatientIds);
@@ -1455,7 +1269,6 @@ export class EmbeddingsPanel extends React.Component<
             });
         }
 
-        // Count all categories including "Unselected" so they appear in the legend
         const counts = new Map<string, number>();
         processedData.forEach(point => {
             const category = point.displayLabel || '';
@@ -1469,20 +1282,17 @@ export class EmbeddingsPanel extends React.Component<
         string,
         { fillColor: string; strokeColor: string; hasStroke: boolean }
     > {
-        // Use the shared rawPlotData computed property (cached by MobX)
         const rawPlotData = this.rawPlotData;
 
         if (rawPlotData.length === 0) {
             return new Map();
         }
 
-        // Apply the same post-processing logic as plotData but without filtering
         const selectedPatientIds = this.selectedPatientIds;
         const hasSelection = selectedPatientIds.length > 0;
 
         let processedData;
         if (!hasSelection) {
-            // No selection - use raw data without transformation
             processedData = rawPlotData;
         } else {
             const selectedPatientSet = new Set(selectedPatientIds);
@@ -1506,7 +1316,6 @@ export class EmbeddingsPanel extends React.Component<
             });
         }
 
-        // Extract color information for each category
         const colors = new Map<
             string,
             { fillColor: string; strokeColor: string; hasStroke: boolean }
@@ -1517,7 +1326,6 @@ export class EmbeddingsPanel extends React.Component<
                 point.color &&
                 !colors.has(point.displayLabel)
             ) {
-                // Determine if this category should have a stroke
                 const isSpecialCategory =
                     point.displayLabel === 'Amplification' ||
                     point.displayLabel === 'Deep Deletion' ||
@@ -1540,7 +1348,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get isNumericClinicalAttribute(): boolean {
-        // Check if the current coloring option is a numeric clinical attribute
         if (this.selectedColoringOption?.info?.clinicalAttribute) {
             return (
                 this.selectedColoringOption.info.clinicalAttribute.datatype ===
@@ -1551,12 +1358,10 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get numericalValueRange(): [number, number] | undefined {
-        // Get the numeric range for the current coloring option
         if (
             this.selectedColoringOption?.info?.clinicalAttribute &&
             this.isNumericClinicalAttribute
         ) {
-            // Handle embedding data fields
             const attrId = this.selectedColoringOption.info.clinicalAttribute
                 .clinicalAttributeId;
             if (
@@ -1574,7 +1379,6 @@ export class EmbeddingsPanel extends React.Component<
                 return result.numericalRange;
             }
 
-            // Handle regular clinical attributes
             const clinicalDataCacheEntry = this.store.clinicalDataCache.get(
                 this.selectedColoringOption.info.clinicalAttribute
             );
@@ -1590,12 +1394,10 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get numericalValueToColor(): ((x: number) => string) | undefined {
-        // Get the color function for the current numeric coloring option
         if (
             this.selectedColoringOption?.info?.clinicalAttribute &&
             this.isNumericClinicalAttribute
         ) {
-            // Handle embedding data fields
             const attrId = this.selectedColoringOption.info.clinicalAttribute
                 .clinicalAttributeId;
             if (
@@ -1613,7 +1415,6 @@ export class EmbeddingsPanel extends React.Component<
                 return result.numericalColorFn;
             }
 
-            // Handle regular clinical attributes
             const clinicalDataCacheEntry = this.store.clinicalDataCache.get(
                 this.selectedColoringOption.info.clinicalAttribute
             );
@@ -1636,11 +1437,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get visibleSampleCount(): number {
-        // plotData is already filtered by the shared sample-identity set
-        // (see ownHiddenSampleKeys) and by hiddenQcCategories, so counting
-        // its points directly stays correct even when a category is only
-        // PARTIALLY hidden as a side effect of another panel's filter -
-        // something a per-category name count could no longer capture.
         let visibleCount = 0;
         this.plotData.forEach(point => {
             const category = point.displayLabel || '';
@@ -1658,8 +1454,7 @@ export class EmbeddingsPanel extends React.Component<
         if (!this.categoryCounts) return 0;
         let total = 0;
         this.categoryCounts.forEach((count, category) => {
-            // Exclude samples that are not in this cohort from the total count
-            // These samples were used to construct the embedding but are not part of the current study
+            // Used to construct the embedding but not part of this study.
             if (
                 category !== 'Sample not in this cohort' &&
                 category !== 'Case not in this cohort'
@@ -1670,10 +1465,8 @@ export class EmbeddingsPanel extends React.Component<
         return total;
     }
 
+    // This panel's own legend toggle state, not the cross-panel filter.
     @computed get visibleCategoryCount(): number {
-        // This is "how many of THIS panel's own legend rows are enabled",
-        // which is about its own toggle state, not the cross-panel sample
-        // filter - so it reads localHiddenCategories, not hiddenSampleKeys.
         if (!this.categoryCounts) return 0;
         let visibleCount = 0;
         this.categoryCounts.forEach((count, category) => {
@@ -1692,31 +1485,22 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get shouldShowControls(): boolean {
-        // Check if there are URL parameters for embeddings coloring selection
         const hasUrlParams = (this.store as any).urlWrapper?.query?.[
             this.coloringParamName
         ]?.selectedOption;
 
-        if (hasUrlParams) {
-            // For gene selections (format: "1956_undefined"), wait for genes to load
-            if (hasUrlParams.match(/^\d+_/)) {
-                return this.genes.length > 0;
-            }
-            // For clinical attributes (format: "undefined_{...}"), show immediately
-            return true;
-        } else {
-            // No URL params, show controls immediately
-            return true;
+        if (hasUrlParams && hasUrlParams.match(/^\d+_/)) {
+            return this.genes.length > 0;
         }
+        return true;
     }
 
     @computed get selectedPatientIds(): string[] {
         return this.store.selectedPatients?.map((p: any) => p.patientId) || [];
     }
 
+    // Side effects live in the constructor's reaction, not here.
     @computed get driverAnnotationsEnabled(): boolean {
-        // Pure computed property - no side effects
-        // The reaction in the constructor handles enabling driver annotations when needed
         if (this.store.driverAnnotationSettings) {
             return this.store.driverAnnotationSettings.driversAnnotated;
         }
@@ -1735,7 +1519,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @computed get isLoading(): boolean {
-        // Check if embedding data is still loading
         if (boehmHeData.isPending) {
             return true;
         }
@@ -1761,7 +1544,6 @@ export class EmbeddingsPanel extends React.Component<
             }
         }
 
-        // Check molecular data loading to prevent flickering
         if (
             this.selectedColoringOption?.info?.entrezGeneId &&
             this.selectedColoringOption.info.entrezGeneId !== -3 &&
@@ -1794,7 +1576,6 @@ export class EmbeddingsPanel extends React.Component<
                 option.info.entrezGeneId !== -10000 &&
                 option.info.entrezGeneId !== -3
             ) {
-                // Gene coloring selection
                 const selectedOption = `${option.info.entrezGeneId}_undefined`;
 
                 urlWrapper.updateURL({
@@ -1812,14 +1593,13 @@ export class EmbeddingsPanel extends React.Component<
                     },
                 });
             } else if (option?.info?.clinicalAttribute) {
-                // Clinical attribute coloring selection
-                // Follow PlotsTab's encoding format exactly
+                // Matches PlotsTab's encoding.
                 const clinicalInfo = {
                     clinicalAttributeId:
                         option.info.clinicalAttribute.clinicalAttributeId,
                     patientAttribute:
                         option.info.clinicalAttribute.patientAttribute || false,
-                    studyId: this.currentStudyIds[0] || '', // Use first study ID
+                    studyId: this.currentStudyIds[0] || '',
                 };
                 const selectedOption = `undefined_${JSON.stringify(
                     clinicalInfo
@@ -1840,13 +1620,12 @@ export class EmbeddingsPanel extends React.Component<
                     },
                 });
             } else {
-                // Clear coloring selection (e.g., for "None" option)
                 urlWrapper.updateURL({
                     [this.coloringParamName]: undefined,
                 });
             }
         } catch (e) {
-            // Error syncing coloring selection to URL
+            // Ignore.
         }
     }
 
@@ -1870,9 +1649,7 @@ export class EmbeddingsPanel extends React.Component<
         this.structuralVariantEnabled = enabled;
     }
 
-    // Public (not private) - called directly from EmbeddingsTab's top bar
-    // when this is the only panel (see its single-panel Map dropdown),
-    // via a ref, the same way applyFilterGlobally is.
+    // Public - called via ref from EmbeddingsTab's status bar dropdown.
     @action.bound
     onEmbeddingChange(selectedOption: { value: string; label: string } | null) {
         if (selectedOption) {
@@ -1881,9 +1658,7 @@ export class EmbeddingsPanel extends React.Component<
             );
             if (embeddingOption) {
                 this.selectedEmbeddingValue = selectedOption.value;
-                // Reset view state when embedding type changes
-                this.centerView(); // Use the action method
-                // Mark as initialized after manual embedding change
+                this.centerView();
                 this.viewStateInitialized = true;
 
                 const urlWrapper = (this.store as any).urlWrapper;
@@ -1966,12 +1741,8 @@ export class EmbeddingsPanel extends React.Component<
 
     @action.bound
     private toggleAllCategories() {
-        // QC categories are tracked separately via hiddenQcCategories, but
-        // keep this exclusion as a defensive safety net. Writing to
-        // localHiddenCategories (not a shared set) is enough - the
-        // constructor's reaction derives the underlying sample keys from
-        // it and pushes those up, which is what actually applies
-        // everywhere (see ownHiddenSampleKeys).
+        // QC categories are tracked separately via hiddenQcCategories -
+        // keep this exclusion as a defensive safety net.
         const embeddingConfigCategories = [
             'Sample not in this cohort',
             'Case not in this cohort',
@@ -1998,17 +1769,10 @@ export class EmbeddingsPanel extends React.Component<
         }
     }
 
-    // Public (not private) - called via a ref from EmbeddingsTab's "Make
-    // Global" status bar button, so the currently-visible embedding
-    // selection (whichever panel's legend filter, lasso selection, or
-    // combination of several is driving it) can be applied as a real
-    // Study View selection, filtering every other chart on the page.
-    // plotData is already filtered down to exactly the visible points by
-    // the shared hiddenSampleKeys/hiddenQcCategories, so this reads
-    // straight from it. Returns whether a selection was actually applied -
-    // the wrapper only resets the legend/lasso filters that produced it
-    // when this is true, so a no-op (e.g. Hide All left nothing visible)
-    // doesn't silently discard the user's filter state for nothing.
+    // Called via ref from EmbeddingsTab's "Make Global" button. Returns
+    // whether a selection was actually applied - the wrapper only resets
+    // the local filters when true, so a no-op (Hide All leaving nothing
+    // visible) doesn't discard the user's filter state for nothing.
     @action.bound
     applyFilterGlobally(): boolean {
         if (this.plotData.length === 0 || !this.selectedEmbedding) {
@@ -2020,7 +1784,6 @@ export class EmbeddingsPanel extends React.Component<
         const embeddingType = this.selectedEmbedding.data.embedding_type;
 
         if (embeddingType === 'samples') {
-            // Sample-level embedding: select specific samples
             const selectedSampleIds = new Set(
                 selectedPoints.map(p => p.sampleId).filter(Boolean)
             );
@@ -2034,7 +1797,7 @@ export class EmbeddingsPanel extends React.Component<
                 displayName: `${this.selectedEmbedding.label} Sample Selection`,
                 description: `Samples selected from ${this.selectedEmbedding.label} embedding`,
                 datatype: 'STRING',
-                patientAttribute: false, // Sample-level selection
+                patientAttribute: false,
                 priority: 1,
                 data: samplesForSelection.map(sample => ({
                     studyId: sample.studyId,
@@ -2046,7 +1809,6 @@ export class EmbeddingsPanel extends React.Component<
 
             this.store.updateCustomSelect(customChartData);
         } else {
-            // Patient-level embedding: select all samples from selected patients
             const selectedPatientSet = new Set(
                 selectedPoints.map(p => p.patientId).filter(Boolean)
             );
@@ -2060,7 +1822,7 @@ export class EmbeddingsPanel extends React.Component<
                 displayName: `${this.selectedEmbedding.label} Patient Selection`,
                 description: `Patients selected from ${this.selectedEmbedding.label} embedding`,
                 datatype: 'STRING',
-                patientAttribute: true, // Patient-level selection
+                patientAttribute: true,
                 priority: 1,
                 data: samplesForSelectedPatients.map(sample => ({
                     studyId: sample.studyId,
@@ -2075,11 +1837,8 @@ export class EmbeddingsPanel extends React.Component<
         return true;
     }
 
-    // A lasso selection no longer applies globally right away - like a
-    // legend hide/select, it just becomes a local filter (see
-    // lassoSelectedKeys, folded into ownHiddenSampleKeys below), shown in
-    // the shared status bar. The user explicitly clicks "Make Global" to
-    // apply it as a real Study View selection via applyFilterGlobally.
+    // A lasso selection becomes a local filter (see lassoSelectedKeys),
+    // applied globally only via applyFilterGlobally ("Make Global").
     @action.bound
     private handlePointSelection(selectedPoints: any[]) {
         if (!selectedPoints || selectedPoints.length === 0) {
@@ -2095,16 +1854,8 @@ export class EmbeddingsPanel extends React.Component<
         this.lassoSelectedKeys = keys;
     }
 
-    // A plain method, not @computed: its renderControls callback reads
-    // props (like isLockedToPrimary) and store-derived values that a
-    // cached computed wouldn't reliably see change - a computed only
-    // recomputes when ITS OWN synchronous execution touches a changed
-    // MobX observable, and prop reads (and reads deferred into a
-    // lazily-invoked callback) don't count, so a cached version of this
-    // could silently keep returning stale controls. Called directly from
-    // render(), which already re-runs on every relevant prop/observable
-    // change via React + the @observer reaction, so nothing here needs
-    // its own memoization.
+    // Plain method, not @computed: renderControls' callback reads props
+    // and store values a cached computed wouldn't reliably see change.
     private renderPlotComponent(): JSX.Element {
         if (this.isLoading) {
             return (
@@ -2146,11 +1897,7 @@ export class EmbeddingsPanel extends React.Component<
         const visualizationProps = {
             data: patientData,
             title: `${this.selectedEmbedding.label} Embedding - ${this.selectedEmbedding.data.title}`,
-            // Just the map's name, not "<label> 1" - the numbered-axis
-            // convention doesn't mean much to a non-technical audience, and
-            // the rotated Y-axis label just overlaps the panel controls
-            // (especially with multiple panels open), so it's dropped
-            // entirely rather than repeating the same name sideways.
+            // No Y-axis label - it overlapped the panel controls.
             xAxisLabel: this.selectedEmbedding.label,
             height: this.plotHeight,
             showLegend: true,
@@ -2245,7 +1992,6 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     render() {
-        // Safety check for study ID access
         if (this.currentStudyIds.length === 0) {
             return (
                 <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -2255,12 +2001,10 @@ export class EmbeddingsPanel extends React.Component<
             );
         }
 
-        // Show loading while embedding data is being fetched
         if (this.isEmbeddingDataLoading) {
             return <LoadingIndicator isLoading={true} />;
         }
 
-        // Only show "not available" message if data is loaded but not for this study
         if (!this.hasEmbeddingSupport) {
             const studyText =
                 this.currentStudyIds.length === 1
@@ -2285,10 +2029,7 @@ export class EmbeddingsPanel extends React.Component<
         }
 
         return (
-            <div className="embeddings-tab">
-                {/* Plot */}
-                {this.renderPlotComponent()}
-            </div>
+            <div className="embeddings-tab">{this.renderPlotComponent()}</div>
         );
     }
 }

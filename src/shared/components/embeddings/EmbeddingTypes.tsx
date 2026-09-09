@@ -74,9 +74,7 @@ export interface EmbeddingVisualizationProps {
     onViewStateChange?: (viewState: ViewState) => void;
     embeddingType?: 'patients' | 'samples';
     categoryCounts?: Map<string, number>;
-    // Per-category counts after every active filter (legend hide/select,
-    // lasso, cross-panel selection) - shown alongside categoryCounts'
-    // raw/unfiltered totals in the legend, as "visible / total".
+    // Shown alongside categoryCounts as "visible / total".
     visibleCategoryCounts?: Map<string, number>;
     categoryColors?: Map<
         string,
@@ -85,27 +83,20 @@ export interface EmbeddingVisualizationProps {
     hiddenCategories?: Set<string>;
     onToggleCategoryVisibility?: (category: string) => void;
     onToggleAllCategories?: () => void;
-    // QC categories (e.g. "Sample not in this cohort") are hidden via a set
-    // shared across every split-view panel, separate from the panel-local
-    // hiddenCategories above - toggled from the primary panel's legend
-    // Configuration section but applied everywhere.
+    // Shared across every split-view panel, unlike hiddenCategories.
     hiddenQcCategories?: Set<string>;
     onToggleQcCategoryVisibility?: (category: string) => void;
-    // Only the primary (first) panel shows the legend's Total/Visible
-    // Samples header and Configuration section - the rest just show the
-    // category list, to save space.
+    // Only the primary panel shows the Configuration section, to save
+    // space.
     showLegendHeaderAndConfiguration?: boolean;
-    // Whether the legend is collapsed to its small "‹ Legend" pill - synced
-    // to the URL by the panel so it survives reload/sharing.
+    // Synced to the URL by the panel, so it survives reload/sharing.
     legendCollapsed?: boolean;
     onLegendCollapsedChange?: (collapsed: boolean) => void;
     visibleSampleCount?: number;
     totalSampleCount?: number;
     visibleCategoryCount?: number;
     totalCategoryCount?: number;
-    // Highlights the legend with a colored border when a cross-panel
-    // sample filter is currently active - from this panel's own legend
-    // selection, or another panel's (see EmbeddingsTab's hiddenSampleKeys).
+    // Colored border cue when a cross-panel sample filter is active.
     isFilterActive?: boolean;
     isNumericAttribute?: boolean;
     numericalValueRange?: [number, number];
@@ -119,16 +110,14 @@ export interface EmbeddingVisualizationProps {
     clinicalAttributeValueMaps?: Map<string, Map<string, string>>;
     mapAttributeValueMaps?: Map<string, Map<string, string>>;
     geneValueMaps?: Map<number, Map<string, string>>;
-    // Controlled pan/lasso-select mode. When supplied, EmbeddingDeckGLVisualization
-    // reads/writes this instead of its own internal state, letting a parent
-    // (e.g. the split-view wrapper) share one pan/select mode across every
-    // mounted panel. Omit to keep the mode purely local to this instance.
+    // Controlled pan/lasso-select mode, shared across mounted panels when
+    // supplied. Omit to keep the mode purely local to this instance.
     selectionMode?: 'none' | 'lasso';
     onSelectionModeChange?: (mode: 'none' | 'lasso') => void;
-    // Lets the parent supply the entire top-left control cluster's markup
-    // while the export/pan-select mechanics (deck ref, mouse handlers, lasso
-    // math) stay owned by EmbeddingDeckGLVisualization. Falls back to the
-    // default ToolbarControls/SelectionControls buttons when omitted.
+    // Lets the parent supply the top-left control cluster's markup while
+    // export/pan-select mechanics stay owned by
+    // EmbeddingDeckGLVisualization. Falls back to the default
+    // ToolbarControls/SelectionControls when omitted.
     renderControls?: (childControls: {
         onExport: () => void;
         selectionMode: 'none' | 'lasso';

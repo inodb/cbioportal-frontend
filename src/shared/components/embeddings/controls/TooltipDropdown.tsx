@@ -11,20 +11,12 @@ type TooltipFieldItem = TooltipFieldOption | TooltipFieldGroup;
 const MAX_OPTIONS_PER_GROUP = 50;
 
 export interface TooltipDropDownProps {
-    // current selection of tooltip fields
     selectedFields: Set<string>;
-
-    // event handler for when the selection changes
     onSelectionChange: (selectedFields: Set<string>) => void;
-
-    // fields the user can add to the tooltip, optionally grouped
-    // (e.g. Genes / Map Attributes / Clinical Attributes)
     options: TooltipFieldItem[];
-
-    // Omits the built-in "Tooltip fields:" label - for callers (like a
-    // popover with its own caption) that would otherwise show it twice.
+    // Omits the built-in "Tooltip fields:" label, for callers with their
+    // own caption.
     hideLabel?: boolean;
-    // Passed straight through to the underlying react-select's `styles` prop.
     selectStyles?: { [key: string]: (base: any, state: any) => any };
 }
 

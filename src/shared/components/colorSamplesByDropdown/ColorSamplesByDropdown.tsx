@@ -290,10 +290,8 @@ export class ColorSamplesByDropdown extends React.Component<
         const stacked = this.props.stacked;
 
         const selectProps = {
-            // The "gene-select"/"color-samples-toolbar-elt" classes carry
-            // SCSS rules (fixed 350px width, wrapper margin/padding) meant
-            // for the original wide toolbar row - skip them in stacked
-            // mode, where selectStyles alone should size the control.
+            // Those classes carry fixed-width SCSS meant for the wide
+            // toolbar row - skip them in stacked mode.
             className: stacked ? '' : 'color-samples-toolbar-elt gene-select',
             value: this.props.selectedOption,
             onChange: this.handleSelectionChange,

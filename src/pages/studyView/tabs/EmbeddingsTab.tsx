@@ -7,9 +7,8 @@ import { StudyViewPageStore } from 'pages/studyView/StudyViewPageStore';
 import { ViewState } from 'shared/components/embeddings/EmbeddingTypes';
 import { EmbeddingsPanel } from './EmbeddingsPanel';
 
-// Matches EmbeddingControlStack's own SELECT_STYLES - kept as a separate
-// copy rather than a shared import since this one only needs to style a
-// single, simple Map dropdown moved here for the single-panel case.
+// Compact variant of EmbeddingControlStack's SELECT_STYLES, for the
+// status bar's inline Map dropdown.
 const MAP_SELECT_STYLES = {
     control: (base: any) => ({
         ...base,
@@ -49,8 +48,7 @@ function mapParamName(panelIndex: number): string {
         : `embeddings_panel${panelIndex}_map`;
 }
 
-// Tooltip fields are shared across every panel (one set of fields shown
-// everywhere), so there's a single URL param rather than a per-panel slot.
+// Shared across all panels - a single URL param, not a per-panel slot.
 const TOOLTIP_FIELDS_PARAM = 'embeddings_tooltip_fields';
 
 // Splits the embeddings tab into 1-4 independent, side-by-side panels, each
@@ -59,36 +57,16 @@ const TOOLTIP_FIELDS_PARAM = 'embeddings_tooltip_fields';
 @observer
 export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     @observable private panelCount: number = 1;
-    // Shared across every panel so Pan/Select applies to all of them at
-    // once, rather than each split-view panel tracking its own mode.
     @observable private sharedSelectionMode: 'none' | 'lasso' = 'none';
-    // Shared across every panel so the same tooltip fields show everywhere.
     @observable.ref private sharedTooltipFields = new Set<string>();
-    // Shared across every panel so hiding a QC category (e.g. "Sample not
-    // in this cohort") from the primary panel's legend Configuration
-    // section applies everywhere.
     @observable private sharedHiddenQcCategories = new Set<string>();
-    // Cross-panel sample filter: clicking a legend category (or Hide
-    // All/Show All) in any panel should hide the underlying SAMPLES
-    // everywhere, even in a panel colored by a completely different
-    // attribute whose own category names don't match (e.g. "Breast Cancer"
-    // vs. "Missense (Driver)"). Each panel keeps its own category-toggle
-    // state locally (purely to drive its own legend UI - see
-    // EmbeddingsPanel's localHiddenCategories) and contributes the
-    // resulting set of hidden sample/patient identity keys here, keyed by
-    // panel index so a panel's contribution can be replaced or dropped
-    // independently of every other panel's. Every panel's plot then
-    // filters by the union of all contributions below.
-    //
-    // @observable.shallow, not plain @observable: a contribution can hold
-    // tens of thousands of sample keys (e.g. "Hide All" on a large study),
-    // and MobX's default deep enhancer would recursively convert each
-    // Set<string> VALUE stored in this Map into its own observable Set too
-    // - instrumenting every individual string entry. That made every
-    // update to a large hidden set catastrophically slow (and memory-
-    // hungry). Shallow keeps only the Map's own key/value slots reactive
-    // (just up to 4 of them, one per panel) and leaves each Set a plain,
-    // uninstrumented JS Set.
+    // Union of every panel's own hidden sample/patient keys (see
+    // EmbeddingsPanel.ownHiddenSampleKeys), so hiding a category in one
+    // panel filters the same underlying samples in every panel, even one
+    // colored by a completely different, non-overlapping attribute.
+    // @observable.shallow: a contribution can hold tens of thousands of
+    // keys, and the default deep enhancer instrumenting every string in
+    // every Set was catastrophically slow.
     @observable.shallow private hiddenSampleKeysByPanel = new Map<
         number,
         Set<string>
@@ -101,58 +79,35 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         });
         return result;
     }
-    // The primary panel's live viewState, broadcast so a non-primary panel
-    // can optionally lock its own view to follow it. Deliberately a plain
-    // (non-observable) mutable holder, not MobX/React state: the primary
-    // panel writes to it on every pan/zoom frame, and making that a tracked
-    // observable read during this component's render() would force the
-    // entire multi-panel wrapper (and every sibling panel) to re-render on
-    // every single frame of a drag - a severe, highly visible perf
-    // regression. Locked panels poll this holder themselves (see
-    // EmbeddingsPanel's rAF-driven lock loop) instead of receiving pushed
-    // updates, so only a locked panel's own render is ever triggered.
+    // Plain mutable holder, not observable: the primary panel writes to it
+    // every pan/zoom frame, and locked panels poll it via rAF instead of
+    // receiving pushed updates, so panning never forces a re-render.
     private readonly primaryViewStateHolder: { current: ViewState | null } = {
         current: null,
     };
-    // Single toggle, shown only on the primary panel: when on, every
-    // non-primary panel follows the primary panel's pan/zoom instead of
-    // moving independently.
     @observable private sharedLockToPrimary = false;
     // When on (default), every panel shows the same map, driven from the
     // status bar's dropdown instead of each panel's own.
     @observable private sharedLockMap = true;
     @observable private sharedMapValue: string | undefined;
 
-    // Total/visible sample counts (plus the embedding's own full
-    // construction size and description), reported by whichever panel
-    // last fired its reaction (they should all agree, since
-    // visibleSampleCount already reflects the same shared
-    // hiddenSampleKeys) - plain values, so no reference-instability risk
-    // the way a shared Set would have. Drives the top status bar below,
-    // both its "X / Y visible" state and its "constructed using N
-    // samples" info state plus explainer tooltip.
+    // Reported by whichever panel last fired its reaction - they should
+    // all agree, since visibleSampleCount reflects the same shared
+    // hiddenSampleKeys. Drives the status bar and its explainer tooltip.
     @observable private reportedTotalSampleCount = 0;
     @observable private reportedVisibleSampleCount = 0;
     @observable private reportedEmbeddingSampleSize = 0;
     @observable private reportedEmbeddingDescription = '';
     @observable private reportedEmbeddingType: 'patients' | 'samples' =
         'samples';
-    // Full cohort size (same unit as the embedding) - only mentioned in
-    // the explainer tooltip when it's larger than reportedTotalSampleCount,
-    // i.e. the map actually covers fewer than the full cohort.
     @observable private reportedCohortCount = 0;
 
-    // Ref to panel 1 specifically, so the status bar's "Make Global"
-    // button can trigger its applyFilterGlobally() directly - simpler
-    // than inventing another cross-panel broadcast mechanism for a
-    // one-off, explicit user action.
+    // So the status bar's "Make Global" button can call panel 1's
+    // applyFilterGlobally() directly.
     private readonly panel1Ref = React.createRef<EmbeddingsPanel>();
 
-    // Increments when the status bar's "Clear" button is clicked - every
-    // panel resets its own hidden-category and lasso-selection filters in
-    // response (see EmbeddingsPanel's componentDidUpdate). Unlike "Make
-    // Global", this needs to reach EVERY panel (not just panel 1), so a
-    // broadcast request id is simpler than one ref per panel.
+    // Increments on "Clear" - every panel resets its own filters in
+    // response (see EmbeddingsPanel.componentDidUpdate).
     @observable private sharedClearFilterRequestId = 0;
 
     constructor(props: IEmbeddingsTabProps) {
@@ -238,18 +193,9 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
 
     @action.bound
     private onSetPanelHiddenSampleKeys(panelIndex: number, keys: Set<string>) {
-        // Content-equality short-circuit, not just a reference check: the
-        // panel's own computed rebuilds a brand new Set object every time
-        // it re-executes, even when nothing meaningful changed (e.g. once
-        // MobX is holding it less warmly across a setTimeout-deferred
-        // hop). Writing that "new but identical" Set into this Map
-        // unconditionally would invalidate sharedHiddenSampleKeys, force
-        // this wrapper to re-render, hand every panel a new
-        // hiddenSampleKeys prop, and cause their plotData to recompute -
-        // which can re-derive the SAME "new" Set again and repeat
-        // indefinitely, entirely self-sustaining once started. Bailing
-        // out here when the content is unchanged stops that loop from
-        // ever getting a foothold.
+        // Content-equality check, not just reference: the panel's computed
+        // can rebuild an identical-but-new Set, and writing that
+        // unconditionally would trigger a self-sustaining re-render loop.
         const existing = this.hiddenSampleKeysByPanel.get(panelIndex);
         if (existing && existing.size === keys.size) {
             let identical = true;
@@ -283,43 +229,26 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         this.reportedCohortCount = info.cohortCount;
     }
 
-    // "samples" or "patients", matching the current embedding's own unit -
-    // used throughout the top status bar and its explainer tooltip so the
-    // wording is accurate for both sample-level and patient-level maps.
     @computed private get unitLabel(): string {
         return this.reportedEmbeddingType;
     }
 
-    // Some of the current cohort's own samples aren't part of the
-    // precomputed map at all (nothing to show for them).
     @computed private get hasMissingCohortSamples(): boolean {
         return this.reportedCohortCount > this.reportedTotalSampleCount;
     }
 
-    // The map also includes samples from outside the current cohort
-    // (shown, but labeled "not in this cohort" - hideable via
-    // Configuration).
     @computed private get hasExtraNonCohortSamples(): boolean {
         return this.reportedEmbeddingSampleSize > this.reportedTotalSampleCount;
     }
 
-    // Drives the main status-bar icon: warn (rather than just inform) when
-    // either mismatch means what's shown isn't a clean 1:1 match with the
-    // current cohort.
     @computed private get hasEmbeddingWarning(): boolean {
         return this.hasMissingCohortSamples || this.hasExtraNonCohortSamples;
     }
 
     @action.bound
     private onApplyGlobally() {
-        // Reads and applies the CURRENT filter synchronously (via
-        // panel 1's plotData), so it's safe to broadcast a clear right
-        // after - once the filtering happens upstream, as a real Study
-        // View selection, the local legend/lasso filter that produced it
-        // is now redundant and would just be stale, unreset state. Only
-        // clear when a selection was actually applied - e.g. Hide All
-        // leaving zero visible samples is a no-op, and clearing then
-        // would just silently discard the user's filter for nothing.
+        // Only clear the local filter if one was actually applied - e.g.
+        // Hide All leaving zero visible samples is a no-op.
         const applied = this.panel1Ref.current?.applyFilterGlobally();
         if (applied) {
             this.sharedClearFilterRequestId += 1;
@@ -331,18 +260,13 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         this.sharedClearFilterRequestId += 1;
     }
 
-    // Deliberately NOT a MobX @action - a plain field write on the holder
-    // above, so broadcasting the primary panel's view every pan/zoom frame
-    // costs nothing and never triggers a re-render (see the holder's
-    // comment for why that matters).
+    // Plain field write, not a MobX @action - see primaryViewStateHolder.
     private readonly setPrimaryViewState = (viewState: ViewState) => {
         this.primaryViewStateHolder.current = viewState;
     };
 
-    // Jumps straight to a target panel count (from the "1 2 3 4" control),
-    // rather than splitting one panel at a time. Growing copies the calling
-    // panel's current selection into every newly-added slot; shrinking
-    // trims from the top.
+    // Growing copies the calling panel's selection into every new slot;
+    // shrinking trims from the top.
     @action.bound
     private onSetPanelCount(targetCount: number, callingPanelIndex: number) {
         const currentCount = this.panelCount;
@@ -364,25 +288,16 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
             }
             urlWrapper.updateURL(updates);
             this.panelCount = targetCount;
-            // Locking defaults to on the moment multiple panels first
-            // come into play.
             if (currentCount === 1) {
                 this.sharedLockToPrimary = true;
             }
         } else {
-            // Shrinking - unmount the panels above targetCount FIRST
-            // (disposing their own URL-sync reactions) before clearing
-            // their URL params, so they can't write a stale default back
-            // into a slot we're freeing.
+            // Unmount the panels above targetCount before clearing their
+            // URL params, so they can't write a stale default back.
             this.panelCount = targetCount;
             if (targetCount === 1) {
-                // Back to a single panel - reset so the next split starts
-                // fresh with the default-on behavior above.
                 this.sharedLockToPrimary = false;
             }
-            // Drop the vacated panels' sample-filter contributions too -
-            // otherwise a stale, non-empty contribution from a since-closed
-            // panel would keep filtering every remaining panel forever.
             for (let i = targetCount + 1; i <= currentCount; i++) {
                 this.hiddenSampleKeysByPanel.delete(i);
             }
@@ -429,12 +344,6 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                         key={panelIndex}
                         style={{
                             minWidth: 0,
-                            // One border around the whole panel, owned by
-                            // the wrapper rather than the plot itself -
-                            // adjacent panels already have the flex/grid
-                            // gap between them, so giving each panel its
-                            // own border too used to draw two parallel
-                            // lines at every seam.
                             border: '1px solid #ddd',
                             borderRadius: '4px',
                             ...(isSquareLayout ? {} : { flex: 1 }),
@@ -486,12 +395,6 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         );
     }
 
-    // Always-visible top bar: Pan/Select on the left (moved here from
-    // each panel's own floating control stack, since selection mode is
-    // already shared across every panel) and a status area on the right -
-    // either general info about the embedding itself (no selection
-    // active) or the active cross-panel selection's Clear/Make Global
-    // controls.
     render() {
         const isFilterActive = this.sharedHiddenSampleKeys.size > 0;
         return (

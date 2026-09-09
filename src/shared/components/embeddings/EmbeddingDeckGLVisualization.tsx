@@ -40,9 +40,8 @@ export class EmbeddingDeckGLVisualization extends React.Component<
 > {
     private containerRef = React.createRef<HTMLDivElement>();
     private deckRef = React.createRef<DeckGL>();
-    // Memoized so DeckGL sees a stable view identity across renders that
-    // don't actually change it (every hover/pin re-render otherwise creates
-    // a new instance) - only recreated when isSelecting actually flips.
+    // Memoized so DeckGL sees a stable view identity across renders,
+    // recreated only when isSelecting flips.
     private cachedView?: OrthographicView;
     private cachedViewIsSelecting?: boolean;
 
@@ -67,9 +66,8 @@ export class EmbeddingDeckGLVisualization extends React.Component<
     }
 
     componentDidUpdate(prevProps: EmbeddingVisualizationProps) {
-        // The container div's own height is driven by actualHeight, so
-        // measuring it back via getBoundingClientRect() is circular and can
-        // never pick up a new incoming height prop - apply it directly.
+        // actualHeight drives the container's own height, so measuring it
+        // back is circular - apply an incoming height prop directly.
         if (
             prevProps.height !== this.props.height &&
             this.props.height !== undefined &&
@@ -78,15 +76,12 @@ export class EmbeddingDeckGLVisualization extends React.Component<
             this.setState({ actualHeight: this.props.height });
         }
 
-        // Width, unlike height, isn't self-referential (the container is
-        // width: 100% of its real parent), so measuring it back works.
         if (prevProps.width !== this.props.width) {
             this.measureContainer();
         }
 
-        // Also remeasure after a short delay to handle tab visibility changes
-        // When switching tabs, the container might be hidden (width=0) during the update
-        // but visible shortly after, so we need to remeasure once layout is complete
+        // Remeasure after tab switches, where the container may have
+        // been hidden (width=0) during the update.
         setTimeout(() => {
             this.measureContainer();
         }, 0);
@@ -292,9 +287,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
         }
     };
 
-    // The effective pan/select mode: controlled by the parent (shared across
-    // every split-view panel) when props.selectionMode is supplied, else
-    // purely local to this instance.
+    // Controlled by the parent when supplied, else purely local.
     private get selectionMode(): 'none' | 'lasso' {
         return this.props.selectionMode !== undefined
             ? this.props.selectionMode

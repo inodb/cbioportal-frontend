@@ -2,13 +2,10 @@ import * as React from 'react';
 import { EmbeddingPoint } from '../EmbeddingTypes';
 import FontAwesome from 'react-fontawesome';
 
-// Helper function to format numbers with commas
 const formatCount = (count: number): string => {
     return count.toLocaleString();
 };
 
-// Helper function to render a legend item
-// Helper function to check if a category should be rendered as unfilled (transparent with border)
 const isUnfilledCategory = (displayLabel: string): boolean => {
     return (
         displayLabel === 'Amplification' ||
@@ -17,12 +14,10 @@ const isUnfilledCategory = (displayLabel: string): boolean => {
     );
 };
 
-// Helper function to check if a category is a VUS mutation
 const isVUSCategory = (displayLabel: string): boolean => {
     return displayLabel.endsWith('(VUS)');
 };
 
-// Import required constants for VUS coloring
 import {
     MUT_COLOR_MISSENSE_PASSENGER,
     MUT_COLOR_INFRAME_PASSENGER,
@@ -30,7 +25,6 @@ import {
     MUT_COLOR_SPLICE_PASSENGER,
 } from 'cbioportal-frontend-commons';
 
-// Helper function to get the correct VUS color based on mutation type
 const getVUSColor = (displayLabel: string): string | undefined => {
     if (displayLabel === 'Missense (VUS)') {
         return MUT_COLOR_MISSENSE_PASSENGER;
@@ -162,7 +156,6 @@ const renderLegendItem = (
     );
 };
 
-// Helper function to render a gradient legend for numeric attributes
 const renderGradientLegend = (
     numericalValueRange: [number, number],
     numericalValueToColor: (x: number) => string,
@@ -245,11 +238,7 @@ export interface LegendPanelProps {
     showLegend?: boolean;
     actualHeight: number;
     categoryCounts?: Map<string, number>;
-    // Per-category counts after every active filter - shown alongside
-    // categoryCounts' raw/unfiltered totals as "visible / total" so a
-    // category whose points got filtered out (by this panel's own toggles
-    // or another panel's lasso selection) doesn't look unchanged just
-    // because its raw total is still the same.
+    // Shown alongside categoryCounts as "visible / total".
     visibleCategoryCounts?: Map<string, number>;
     categoryColors?: Map<
         string,
@@ -258,14 +247,10 @@ export interface LegendPanelProps {
     hiddenCategories?: Set<string>;
     onToggleCategoryVisibility?: (category: string) => void;
     onToggleAllCategories?: () => void;
-    // QC categories are toggled through this separate pair when supplied
-    // (shared across split-view panels), falling back to the general pair
-    // above otherwise.
     hiddenQcCategories?: Set<string>;
     onToggleQcCategoryVisibility?: (category: string) => void;
-    // Hides the Total/Visible Samples header and the Configuration section
-    // - used so only one split-view panel shows them, saving space on the
-    // rest. Defaults to true (shown).
+    // Hides the Configuration section - only one split-view panel shows
+    // it, to save space. Defaults to true.
     showHeaderAndConfiguration?: boolean;
     visibleSampleCount?: number;
     totalSampleCount?: number;
@@ -274,15 +259,10 @@ export interface LegendPanelProps {
     isNumericAttribute?: boolean;
     numericalValueRange?: [number, number];
     numericalValueToColor?: (x: number) => string;
-    // Controlled collapse state (e.g. synced to the URL by the caller).
     // Falls back to local state when omitted.
     isCollapsed?: boolean;
     onCollapsedChange?: (collapsed: boolean) => void;
-    // Highlights the legend with a colored border when a cross-panel
-    // sample filter is currently active (from this panel's own legend
-    // selection, or another panel's) - a quick visual cue that what's
-    // rendered is a filtered subset, even on a non-primary panel that
-    // doesn't show the Total/Visible Samples header.
+    // Colored border cue when a cross-panel sample filter is active.
     isFilterActive?: boolean;
 }
 
@@ -327,25 +307,23 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
         return null;
     }
 
-    // Use categoryCounts and categoryColors as the primary data source for legend items
-    // This ensures all categories always appear in the legend, even when hidden
+    // categoryCounts/categoryColors keep every category in the legend
+    // even when hidden; data-based fallback below for older callers.
     let legendItems: Record<
         string,
         { fillColor: string; strokeColor: string; hasStroke: boolean }
     > = {};
 
     if (categoryCounts && categoryColors && categoryCounts.size > 0) {
-        // Create legend items for all categories using the complete color data
         categoryCounts.forEach((count, category) => {
             const colorInfo = categoryColors.get(category);
             if (colorInfo) {
-                // Check if this is a VUS category and use explicit VUS color if available
                 const vusColor = isVUSCategory(category)
                     ? getVUSColor(category)
                     : undefined;
 
                 legendItems[category] = {
-                    fillColor: vusColor || colorInfo.fillColor, // Use VUS color if available
+                    fillColor: vusColor || colorInfo.fillColor,
                     strokeColor:
                         colorInfo.strokeColor ||
                         vusColor ||
@@ -353,7 +331,6 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                     hasStroke: colorInfo.hasStroke,
                 };
             } else {
-                // Fallback styling for categories not in color data (shouldn't happen, but defensive)
                 legendItems[category] = {
                     fillColor: '#CCCCCC',
                     strokeColor: '#CCCCCC',
@@ -362,21 +339,19 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
             }
         });
     } else {
-        // Fallback to old method if categoryCounts/categoryColors not available
         if (!data || data.length === 0) {
             return null;
         }
 
         legendItems = data.reduce((acc, point) => {
             if (point.displayLabel && point.color) {
-                // Use explicit VUS colors for categories that end with (VUS)
                 const vusColor = isVUSCategory(point.displayLabel)
                     ? getVUSColor(point.displayLabel)
                     : undefined;
 
                 acc[point.displayLabel] = {
-                    fillColor: vusColor || point.color, // Use VUS color if available
-                    strokeColor: point.strokeColor || vusColor || point.color, // Use strokeColor or VUS color
+                    fillColor: vusColor || point.color,
+                    strokeColor: point.strokeColor || vusColor || point.color,
                     hasStroke: !!(
                         point.strokeColor && point.strokeColor !== point.color
                     ),
@@ -386,7 +361,6 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
         }, {} as Record<string, { fillColor: string; strokeColor: string; hasStroke: boolean }>);
     }
 
-    // Separate biological categories from QC categories (non-cohort samples)
     const qcCategories = [
         'Case not in this cohort',
         'Sample not in this cohort',
@@ -405,19 +379,16 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
         if (qcCategories.includes(label)) {
             qcEntries.push([label, styling]);
         } else {
-            // Everything else goes in biological section (including "Unselected")
             biologicalEntries.push([label, styling]);
         }
     });
 
-    // Sort biological entries by count (highest to lowest)
     biologicalEntries.sort(([labelA], [labelB]) => {
         const countA = categoryCounts?.get(labelA) || 0;
         const countB = categoryCounts?.get(labelB) || 0;
-        return countB - countA; // Descending order
+        return countB - countA;
     });
 
-    // Sort QC entries with specific order
     qcEntries.sort(([labelA], [labelB]) => {
         const priority = {
             'Case not in this cohort': 1,
@@ -529,7 +500,6 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                 </button>
                 {onToggleAllCategories &&
                     (() => {
-                        // Determine if all categories are currently visible
                         const allVisible =
                             !hiddenCategories || hiddenCategories.size === 0;
                         const buttonText = allVisible ? 'Hide All' : 'Show All';
@@ -611,13 +581,9 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             ([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
-                                // A category with zero currently-visible
-                                // points has no entry in the map at all
-                                // (nothing to count), which must still
-                                // read as 0 here - not "no filter active"
-                                // (Map.get's undefined) - or a fully
-                                // hidden category would wrongly show its
-                                // raw, unfiltered count.
+                                // A fully-hidden category has no map
+                                // entry, which must read as 0, not
+                                // "no filter" (undefined).
                                 const visibleCount = visibleCategoryCounts
                                     ? visibleCategoryCounts.get(displayLabel) ||
                                       0
@@ -695,13 +661,9 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             {qcEntries.map(([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
-                                // A category with zero currently-visible
-                                // points has no entry in the map at all
-                                // (nothing to count), which must still
-                                // read as 0 here - not "no filter active"
-                                // (Map.get's undefined) - or a fully
-                                // hidden category would wrongly show its
-                                // raw, unfiltered count.
+                                // A fully-hidden category has no map
+                                // entry, which must read as 0, not
+                                // "no filter" (undefined).
                                 const visibleCount = visibleCategoryCounts
                                     ? visibleCategoryCounts.get(displayLabel) ||
                                       0

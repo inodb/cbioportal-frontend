@@ -14,15 +14,11 @@ export interface EmbeddingControlStackProps {
     selectedMapOption: { value: string; label: string } | null;
     onMapChange: (option: { value: string; label: string } | null) => void;
 
-    // Whether the Map/Color by/Tooltip fields controls should render at all
-    // (gated by the panel while it's waiting on data needed to resolve a
-    // URL-driven selection, to avoid flashing the wrong default).
+    // Gated while waiting on data to resolve a URL-driven selection, to
+    // avoid flashing the wrong default.
     showMapColorTooltipControls: boolean;
-    // Suppresses just the Map dropdown here - EmbeddingsTab renders it in
-    // its own top bar instead when this is the only panel (each Map only
-    // makes sense to pick per-panel once there's more than one).
-    // Defaults to true (shown) so multi-panel callers don't need to think
-    // about it.
+    // False when EmbeddingsTab renders the Map dropdown itself instead
+    // (single-panel, or multi-panel with Lock Map on). Defaults to true.
     showMapInControlStack?: boolean;
 
     // Color by
@@ -53,11 +49,8 @@ export interface EmbeddingControlStackProps {
     selectedTooltipFields: Set<string>;
     onTooltipFieldsChange: (fields: Set<string>) => void;
 
-    // Center (Pan/Select now lives in EmbeddingsTab's top bar, not here)
+    // Pan/Select lives in EmbeddingsTab's top bar, not here.
     onCenter: () => void;
-    // Shared toggle, shown only on the primary panel: when on, every
-    // non-primary panel follows the primary panel's pan/zoom instead of
-    // moving independently.
     isLockedToPrimary: boolean;
     onToggleLockedToPrimary: () => void;
     isMapLocked: boolean;
@@ -83,10 +76,7 @@ const ROW_LABEL_STYLE: React.CSSProperties = {
     lineHeight: '12px',
 };
 
-// Bordered, compact react-select look shared by Map/Color by/Tooltip - each
-// is its own self-contained dropdown (no wrapping card, no separate popover
-// fanning out beside it - clicking one opens its menu directly below, same
-// as any other <select>).
+// Bordered, compact react-select look shared by Map/Color by/Tooltip.
 const SELECT_STYLES = {
     control: (base: any) => ({
         ...base,
@@ -136,9 +126,8 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     panelCount,
     onSetPanelCount,
 }) => {
-    // Pan/Select, tooltip fields, panel count, and export are all either
-    // shared across every panel or only make sense once - so only the
-    // first panel shows them; the rest keep just Map/Color by/Center.
+    // Tooltip fields/panel count are shared, so only the first panel
+    // shows them.
     const isPrimaryPanel = panelIndex === 1;
 
     return (
