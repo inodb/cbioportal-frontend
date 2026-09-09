@@ -59,6 +59,10 @@ export type IGeneCellProps = {
     isTumorSuppressorGene: boolean;
     isO2glGene?: boolean;
     o2glOncotreeCodes?: string[];
+    // Whether to show the OncoKB cancer-gene icon inline — new alongside the
+    // O2GL work, so it's gated behind the same feature flag rather than
+    // changing the gene cell's appearance for everyone.
+    showOncoKbIcon?: boolean;
     oncotreeCodeColorMap?: { [code: string]: string };
     oncotreeCodeNameMap?: { [code: string]: string };
     onGeneSelect: (hugoGeneSymbol: string) => void;
@@ -113,7 +117,7 @@ export class GeneCell extends React.Component<IGeneCellProps, {}> {
                 undefined
             );
         const iconStyle: React.CSSProperties = {
-            marginLeft: 1,
+            marginLeft: 4,
             display: 'inline-flex',
             alignItems: 'center',
             // collapse the inline baseline gap so nested icons (e.g. MutSig,
@@ -169,7 +173,7 @@ export class GeneCell extends React.Component<IGeneCellProps, {}> {
                                 this.props.isCancerGene || this.props.isO2glGene
                             }
                         />
-                        {this.props.isCancerGene && (
+                        {this.props.isCancerGene && this.props.showOncoKbIcon && (
                             <span style={iconStyle}>
                                 <OncoKbCancerGeneIcon
                                     hugoGeneSymbol={this.props.hugoGeneSymbol}

@@ -207,6 +207,7 @@ export class MultiSelectionTable extends React.Component<
                                 data.isOncokbTumorSuppressorGene
                             }
                             isO2glGene={this.o2glGeneSet.has(data.label)}
+                            showOncoKbIcon={this.props.o2glFilterEnabled}
                             o2glOncotreeCodes={
                                 this.props.o2glGeneOncotreeCodes
                                     ? this.props.o2glGeneOncotreeCodes[
