@@ -599,12 +599,17 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} visible
                                 </>
-                            ) : (
+                            ) : this.panelCount === 1 ? (
+                                // These per-embedding counts (and the map
+                                // dropdown itself) only make sense for a
+                                // single panel - with multiple panels each
+                                // can have a different map selected, so
+                                // there's no one "the" map/sample-size to
+                                // report here.
                                 <>
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} embedded in{' '}
-                                    {this.panelCount === 1 &&
-                                    this.panel1Ref.current
+                                    {this.panel1Ref.current
                                         ?.shouldShowControls ? (
                                         <Select
                                             name="embedding-select"
@@ -629,9 +634,9 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                     {this.reportedEmbeddingSampleSize.toLocaleString()}{' '}
                                     {this.unitLabel})
                                 </>
-                            )}
+                            ) : null}
                         </span>
-                        {!isFilterActive && (
+                        {!isFilterActive && this.panelCount === 1 && (
                             <DefaultTooltip
                                 placement="bottom"
                                 overlay={
