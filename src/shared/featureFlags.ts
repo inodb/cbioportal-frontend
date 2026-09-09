@@ -13,6 +13,10 @@ export interface FeatureFlagPortalOverride {
 }
 
 export interface FeatureFlagMetadata {
+    /** human-readable name shown in the UI, instead of the raw flag id */
+    title: string;
+    /** groups related flags together in the UI */
+    category: string;
     /** shown to users deciding whether to opt in */
     description: string;
     /**
@@ -43,6 +47,8 @@ export const FEATURE_FLAG_METADATA: {
     [flag in FeatureFlagEnum]: FeatureFlagMetadata;
 } = {
     [FeatureFlagEnum.LEFT_TRUNCATION_ADJUSTMENT]: {
+        title: 'Left Truncation Adjustment',
+        category: 'Survival Analysis',
         description:
             'Adjusts survival curves for left-truncation bias in the ' +
             'Comparison and Study View survival tabs. Only has an effect ' +
@@ -55,6 +61,8 @@ export const FEATURE_FLAG_METADATA: {
         relevantStudyIds: ['heme_onc_nsclc_genie_bpc'],
     },
     [FeatureFlagEnum.PATIENT_MRNA_TAB]: {
+        title: 'Patient mRNA Tab',
+        category: 'Bulk RNA-Seq Support',
         description:
             "Adds the patient view's mRNA/Plots tab for studies with an " +
             'expression profile.',
@@ -64,6 +72,8 @@ export const FEATURE_FLAG_METADATA: {
         alwaysOnPortals: ['mskcc-portal'],
     },
     [FeatureFlagEnum.GENE_SPECIFIC_VIOLIN_PLOT]: {
+        title: 'Gene-Specific Violin Plot',
+        category: 'Bulk RNA-Seq Support',
         description:
             'Auto-adds a default-configured gene-specific violin plot chart ' +
             'from mRNA profiles in Study View.',
@@ -72,6 +82,8 @@ export const FEATURE_FLAG_METADATA: {
             '/study?id=msk_target_test&featureFlags=geneSpecificViolinPlot',
     },
     [FeatureFlagEnum.EMBEDDINGS]: {
+        title: 'Embeddings',
+        category: 'Multimodal',
         description:
             'Enables the embeddings (e.g. UMAP) visualization tab in Study ' +
             'View for studies with embedding resources.',
@@ -88,6 +100,8 @@ export function getFeatureFlagDisplayInfo(
     const meta = FEATURE_FLAG_METADATA[flag];
     const override = appName ? meta.portalOverrides?.[appName] : undefined;
     return {
+        title: meta.title,
+        category: meta.category,
         description: override?.description ?? meta.description,
         exampleUrl: override?.exampleUrl ?? meta.exampleUrl,
         alwaysOn: !!appName && !!meta.alwaysOnPortals?.includes(appName),

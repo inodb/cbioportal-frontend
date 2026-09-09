@@ -73,20 +73,43 @@ export default class FeatureFlagsModal extends React.Component<
         return this._selectedFlag ?? this.visibleFlags[0];
     }
 
+    private get groupedVisibleFlags(): {
+        category: string;
+        flags: FeatureFlagEnum[];
+    }[] {
+        const appName = getServerConfig().app_name;
+        const groups: { category: string; flags: FeatureFlagEnum[] }[] = [];
+        this.visibleFlags.forEach(flag => {
+            const { category } = getFeatureFlagDisplayInfo(flag, appName);
+            let group = groups.find(g => g.category === category);
+            if (!group) {
+                group = { category, flags: [] };
+                groups.push(group);
+            }
+            group.flags.push(flag);
+        });
+        return groups;
+    }
+
     private renderDetail(flag: FeatureFlagEnum) {
         const appName = getServerConfig().app_name;
         const { featureFlagStore } = this.props;
         const enabled = featureFlagStore.has(flag);
-        const { description, exampleUrl, alwaysOn } = getFeatureFlagDisplayInfo(
-            flag,
-            appName
-        );
+        const {
+            title,
+            description,
+            exampleUrl,
+            alwaysOn,
+        } = getFeatureFlagDisplayInfo(flag, appName);
         const optable = isFeatureFlagOptable(flag, appName);
 
         return (
             <div className={styles.detail}>
                 <div className={styles.detailHeader}>
-                    <h4>{flag}</h4>
+                    <div>
+                        <h4>{title}</h4>
+                        <div className={styles.flagId}>{flag}</div>
+                    </div>
                     {optable ? (
                         <a
                             className={styles.switchLabel}
@@ -128,7 +151,8 @@ export default class FeatureFlagsModal extends React.Component<
 
     render() {
         const { featureFlagStore, onHide } = this.props;
-        const flags = this.visibleFlags;
+        const appName = getServerConfig().app_name;
+        const groups = this.groupedVisibleFlags;
         const selected = this.selectedFlag;
         const isLoading = this.store.accessibleStudyIds.isPending;
 
@@ -141,31 +165,55 @@ export default class FeatureFlagsModal extends React.Component<
                 </Modal.Header>
                 <Modal.Body>
                     <p className={styles.subtext}>
-                        Get early access to features we're still working on.
+                        Get early access to features we're still working on. See
+                        our{' '}
+                        <a
+                            href="https://about.cbioportal.org/roadmap"
+                            target="_blank"
+                        >
+                            roadmap
+                        </a>{' '}
+                        for what's coming next.
                     </p>
                     {isLoading ? (
                         <LoadingIndicator isLoading={true} />
                     ) : (
                         <div className={styles.layout}>
                             <ul className={styles.sidebar}>
-                                {flags.map(flag => (
-                                    <li
-                                        key={flag}
-                                        className={classNames({
-                                            [styles.selected]:
-                                                flag === selected,
-                                        })}
-                                        onClick={() => this.selectFlag(flag)}
-                                    >
-                                        <FontAwesome
-                                            name={
-                                                featureFlagStore.has(flag)
-                                                    ? 'toggle-on'
-                                                    : 'toggle-off'
-                                            }
-                                        />{' '}
-                                        {flag}
-                                    </li>
+                                {groups.map(group => (
+                                    <React.Fragment key={group.category}>
+                                        <li className={styles.categoryHeader}>
+                                            {group.category}
+                                        </li>
+                                        {group.flags.map(flag => (
+                                            <li
+                                                key={flag}
+                                                className={classNames({
+                                                    [styles.selected]:
+                                                        flag === selected,
+                                                })}
+                                                onClick={() =>
+                                                    this.selectFlag(flag)
+                                                }
+                                            >
+                                                <FontAwesome
+                                                    name={
+                                                        featureFlagStore.has(
+                                                            flag
+                                                        )
+                                                            ? 'toggle-on'
+                                                            : 'toggle-off'
+                                                    }
+                                                />{' '}
+                                                {
+                                                    getFeatureFlagDisplayInfo(
+                                                        flag,
+                                                        appName
+                                                    ).title
+                                                }
+                                            </li>
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                             </ul>
                             {selected && this.renderDetail(selected)}
