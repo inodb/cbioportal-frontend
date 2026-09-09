@@ -622,13 +622,7 @@ if (isDev || isTest) {
 
     config.devServer.port = devPort;
     //config.devServer.hostname = devHost;
-
-    // force hot module reloader to hit absolute path so it can load
-    // from dev server
-    config.output.publicPath = '/';
 } else {
-    config.output.publicPath = '/';
-
     // css modules for any scss matching test
     config.module.rules.push({
         test: /\.module\.scss$/,
