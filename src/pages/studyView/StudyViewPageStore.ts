@@ -10165,6 +10165,11 @@ export class StudyViewPageStore
     }
 
     @computed get o2glFilterMatchedOncotreeCodes(): string[] {
+        if (
+            !this.appStore.featureFlagStore.has(FeatureFlagEnum.ONCOTREE2GENES)
+        ) {
+            return [];
+        }
         return _.uniq(
             this.oncotreeCodeValues.result
                 .map(code => code.trim().toUpperCase())
