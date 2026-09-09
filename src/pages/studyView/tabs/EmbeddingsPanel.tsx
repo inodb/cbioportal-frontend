@@ -681,6 +681,22 @@ export class EmbeddingsPanel extends React.Component<
         if (!cacheEntry?.isComplete || !cacheEntry.result) {
             return new Map();
         }
+
+        // Sample-level embeddings render one point per sample, keyed by
+        // uniqueSampleKey (see makeEmbeddingScatterPlotData/TooltipDisplay) -
+        // a patient-aggregated map would be wrong/blank for sample-only
+        // attributes and inconsistent with how every other point lookup in
+        // this panel keys sample embeddings.
+        if (this.selectedEmbedding?.data.embedding_type === 'samples') {
+            const sampleValueMap = new Map<string, string>();
+            cacheEntry.result.data.forEach(d => {
+                if ('value' in d) {
+                    sampleValueMap.set(d.uniqueSampleKey, d.value || 'Unknown');
+                }
+            });
+            return sampleValueMap;
+        }
+
         const maps = preComputeClinicalDataMaps(
             cacheEntry.result.data,
             null,

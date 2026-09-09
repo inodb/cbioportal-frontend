@@ -482,15 +482,12 @@ export type StudyViewURLQuery = {
     embeddings_legend_collapsed?: string;
     embeddings_panel2_coloring_selection?: PlotsColoringParam;
     embeddings_panel2_map?: string;
-    embeddings_panel2_tooltip_fields?: string;
     embeddings_panel2_legend_collapsed?: string;
     embeddings_panel3_coloring_selection?: PlotsColoringParam;
     embeddings_panel3_map?: string;
-    embeddings_panel3_tooltip_fields?: string;
     embeddings_panel3_legend_collapsed?: string;
     embeddings_panel4_coloring_selection?: PlotsColoringParam;
     embeddings_panel4_map?: string;
-    embeddings_panel4_tooltip_fields?: string;
     embeddings_panel4_legend_collapsed?: string;
     generic_assay_groups?: string;
     geneset_list?: string;

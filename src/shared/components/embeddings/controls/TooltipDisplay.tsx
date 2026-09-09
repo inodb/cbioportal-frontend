@@ -34,10 +34,18 @@ const clinicalAttributeValue = (
     clinicalAttributeId: string,
     point: EmbeddingPoint,
     valueMaps: TooltipFieldValueMaps
-): string =>
-    valueMaps.clinicalAttributeValueMaps
-        ?.get(clinicalAttributeId)
-        ?.get(point.patientId || '') || '';
+): string => {
+    // Sample-level embeddings supply a map keyed by uniqueSampleKey (see
+    // EmbeddingsPanel.getClinicalAttributeValueMap); patient-level
+    // embeddings supply one keyed by patientId, and points from those
+    // don't carry a uniqueSampleKey at all.
+    const key = point.uniqueSampleKey || point.patientId || '';
+    return (
+        valueMaps.clinicalAttributeValueMaps
+            ?.get(clinicalAttributeId)
+            ?.get(key) || ''
+    );
+};
 
 // Resolves the value for a dynamically selected (non-fixed) tooltip field,
 // dispatching on its value prefix. Returns '' when there's no data.
