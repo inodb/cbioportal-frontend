@@ -115,6 +115,8 @@ export type MultiSelectionTableProps = BaseMultiSelectionTableProps & {
     onGeneSelect?: (hugoGeneSymbol: string) => void;
     columns: MultiSelectionTableColumn[];
     promise: MobxPromise<MultiSelectionTableRow[]>;
+    filterByDriverGenes?: boolean;
+    onChangeDriverGenesFilter?: (filtered: boolean) => void;
 };
 
 const DEFAULT_COLUMN_WIDTH_RATIO: {
@@ -746,17 +748,25 @@ export class MultiSelectionTable extends React.Component<
     }
 
     @computed get tableData() {
-        let data = this.props.promise.result || [];
+        const data = this.props.promise.result || [];
+        const activeFilters: Array<(
+            row: MultiSelectionTableRow
+        ) => boolean> = [];
         if (this.isFilteredByCancerGeneList) {
-            data = _.filter(data, row => row.isCancerGene);
+            activeFilters.push(row => row.isCancerGene);
         }
         if (this.isFilteredByO2gl) {
-            data = _.filter(data, row => this.o2glGeneSet.has(row.label));
+            activeFilters.push(row => this.o2glGeneSet.has(row.label));
         }
         if (this.isFilteredByDriverGenes) {
-            data = _.filter(data, row => !_.isUndefined(row.qValue));
+            activeFilters.push(row => !_.isUndefined(row.qValue));
         }
-        return data;
+        if (activeFilters.length === 0) {
+            return data;
+        }
+        // a gene is kept if it matches ANY checked filter (union, not
+        // intersection) — the dropdown presents independent checkboxes
+        return _.filter(data, row => activeFilters.some(f => f(row)));
     }
 
     @computed get flattenedFilters() {
@@ -836,13 +846,6 @@ export class MultiSelectionTable extends React.Component<
         return new Set(this.props.o2glGenes || []);
     }
 
-    @observable private _filterByDriverGenes = false;
-
-    @action.bound
-    private toggleDriverGenesFilter(checked: boolean) {
-        this._filterByDriverGenes = checked;
-    }
-
     @computed get driverGenes(): MultiSelectionTableRow[] {
         return _.filter(
             this.props.promise.result || [],
@@ -855,7 +858,7 @@ export class MultiSelectionTable extends React.Component<
     }
 
     @computed get isFilteredByDriverGenes(): boolean {
-        return this.hasDriverGenes && this._filterByDriverGenes;
+        return this.hasDriverGenes && !!this.props.filterByDriverGenes;
     }
 
     // MutSig flags significantly mutated genes; GISTIC flags recurrent CNAs.
@@ -947,7 +950,9 @@ export class MultiSelectionTable extends React.Component<
                     </span>
                 ),
                 checked: this.isFilteredByDriverGenes,
-                onToggle: checked => this.toggleDriverGenesFilter(checked),
+                onToggle: checked =>
+                    this.props.onChangeDriverGenesFilter &&
+                    this.props.onChangeDriverGenesFilter(checked),
                 dataTest: 'gene-filter-option-driver-genes',
             });
         }

@@ -3047,6 +3047,7 @@ export class StudyViewPageStore
 
     @observable private _filterMutatedGenesTableByO2gl: boolean = false;
     @observable private _filterSVGenesTableByO2gl: boolean = false;
+    @observable private _filterStructVarsTableByO2gl: boolean = false;
     @observable private _filterCNAGenesTableByO2gl: boolean = false;
 
     @action.bound
@@ -3056,6 +3057,10 @@ export class StudyViewPageStore
     @action.bound
     updateSVGenesTableByO2glFilter(filtered: boolean): void {
         this._filterSVGenesTableByO2gl = filtered;
+    }
+    @action.bound
+    updateStructVarsTableByO2glFilter(filtered: boolean): void {
+        this._filterStructVarsTableByO2gl = filtered;
     }
     @action.bound
     updateCNAGenesTableByO2glFilter(filtered: boolean): void {
@@ -3070,8 +3075,38 @@ export class StudyViewPageStore
     @computed get filterSVGenesTableByO2gl(): boolean {
         return this.isO2glFilterAvailable && this._filterSVGenesTableByO2gl;
     }
+    @computed get filterStructVarsTableByO2gl(): boolean {
+        return this.isO2glFilterAvailable && this._filterStructVarsTableByO2gl;
+    }
     @computed get filterCNAGenesTableByO2gl(): boolean {
         return this.isO2glFilterAvailable && this._filterCNAGenesTableByO2gl;
+    }
+
+    @observable private _filterMutatedGenesTableByDriverGenes: boolean = false;
+    @observable private _filterSVGenesTableByDriverGenes: boolean = false;
+    @observable private _filterCNAGenesTableByDriverGenes: boolean = false;
+
+    @action.bound
+    updateMutatedGenesTableByDriverGenesFilter(filtered: boolean): void {
+        this._filterMutatedGenesTableByDriverGenes = filtered;
+    }
+    @action.bound
+    updateSVGenesTableByDriverGenesFilter(filtered: boolean): void {
+        this._filterSVGenesTableByDriverGenes = filtered;
+    }
+    @action.bound
+    updateCNAGenesTableByDriverGenesFilter(filtered: boolean): void {
+        this._filterCNAGenesTableByDriverGenes = filtered;
+    }
+
+    @computed get filterMutatedGenesTableByDriverGenes(): boolean {
+        return this._filterMutatedGenesTableByDriverGenes;
+    }
+    @computed get filterSVGenesTableByDriverGenes(): boolean {
+        return this._filterSVGenesTableByDriverGenes;
+    }
+    @computed get filterCNAGenesTableByDriverGenes(): boolean {
+        return this._filterCNAGenesTableByDriverGenes;
     }
 
     public get filterComparisonGroups(): StudyViewComparisonGroup[] {
@@ -8282,7 +8317,15 @@ export class StudyViewPageStore
                 this._filterMutatedGenesTableByCancerGenes,
                 this._filterSVGenesTableByCancerGenes,
                 this._filterCNAGenesTableByCancerGenes,
-                this.currentGridLayout
+                this.currentGridLayout,
+                this._filterMutatedGenesTableByO2gl,
+                this._filterSVGenesTableByO2gl,
+                this._filterStructVarsTableByO2gl,
+                this._filterCNAGenesTableByO2gl,
+                this._filterMutatedGenesTableByDriverGenes,
+                this._filterSVGenesTableByDriverGenes,
+                this._filterCNAGenesTableByDriverGenes,
+                this._filterStructVarsTableByCancerGenes
             );
         }
         return chartSettingsMap;
@@ -8332,7 +8375,15 @@ export class StudyViewPageStore
         this.currentFocusedChartByUserDimension = undefined;
         this._filterMutatedGenesTableByCancerGenes = true;
         this._filterSVGenesTableByCancerGenes = true;
+        this._filterStructVarsTableByCancerGenes = true;
         this._filterCNAGenesTableByCancerGenes = true;
+        this._filterMutatedGenesTableByO2gl = false;
+        this._filterSVGenesTableByO2gl = false;
+        this._filterStructVarsTableByO2gl = false;
+        this._filterCNAGenesTableByO2gl = false;
+        this._filterMutatedGenesTableByDriverGenes = false;
+        this._filterSVGenesTableByDriverGenes = false;
+        this._filterCNAGenesTableByDriverGenes = false;
         this._clinicalDataBinFilterSet = observable.map(
             _.fromPairs(this._defaultClinicalDataBinFilterSet.toJSON())
         );
@@ -8716,24 +8767,31 @@ export class StudyViewPageStore
                         chartUserSettings.filterByCancerGenes === undefined
                             ? true
                             : chartUserSettings.filterByCancerGenes;
+                    this._filterMutatedGenesTableByO2gl = !!chartUserSettings.filterByO2gl;
+                    this._filterMutatedGenesTableByDriverGenes = !!chartUserSettings.filterByDriverGenes;
                     break;
                 case ChartTypeEnum.STRUCTURAL_VARIANT_GENES_TABLE:
                     this._filterSVGenesTableByCancerGenes =
                         chartUserSettings.filterByCancerGenes === undefined
                             ? true
                             : chartUserSettings.filterByCancerGenes;
+                    this._filterSVGenesTableByO2gl = !!chartUserSettings.filterByO2gl;
+                    this._filterSVGenesTableByDriverGenes = !!chartUserSettings.filterByDriverGenes;
                     break;
                 case ChartTypeEnum.STRUCTURAL_VARIANTS_TABLE:
                     this._filterStructVarsTableByCancerGenes =
                         chartUserSettings.filterByCancerGenes === undefined
                             ? true
                             : chartUserSettings.filterByCancerGenes;
+                    this._filterStructVarsTableByO2gl = !!chartUserSettings.filterByO2gl;
                     break;
                 case ChartTypeEnum.CNA_GENES_TABLE:
                     this._filterCNAGenesTableByCancerGenes =
                         chartUserSettings.filterByCancerGenes === undefined
                             ? true
                             : chartUserSettings.filterByCancerGenes;
+                    this._filterCNAGenesTableByO2gl = !!chartUserSettings.filterByO2gl;
+                    this._filterCNAGenesTableByDriverGenes = !!chartUserSettings.filterByDriverGenes;
                     break;
                 case ChartTypeEnum.BAR_CHART:
                     let ref = this._clinicalDataBinFilterSet.get(

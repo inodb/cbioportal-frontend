@@ -3,28 +3,28 @@ import * as React from 'react';
 // OncoTree brand blue (https://oncotree.info)
 const ONCOTREE_BLUE = '#2e6db4';
 
-// Resolve any CSS color (named like "MediumSeaGreen" or hex) to #rrggbb.
-const colorHexCache: { [color: string]: string } = {};
-function toHex(color: string): string {
-    if (colorHexCache[color] !== undefined) {
-        return colorHexCache[color];
+// Resolve any CSS color (named like "MediumSeaGreen" or hex) to the browser's
+// normalized "rgb(...)"/"rgba(...)" form via CSSOM — no canvas dependency, so
+// there's no unsupported-context fallback path to fall through.
+const colorRgbCache: { [color: string]: string } = {};
+function toRgbString(color: string): string {
+    if (colorRgbCache[color] !== undefined) {
+        return colorRgbCache[color];
     }
-    let hex = color;
+    let rgb = color;
     try {
-        const ctx = document.createElement('canvas').getContext('2d');
-        if (ctx) {
-            ctx.fillStyle = color;
-            hex = ctx.fillStyle;
-        }
+        const el = document.createElement('span');
+        el.style.color = color;
+        rgb = el.style.color || color;
     } catch (e) {
         // ignore; fall back below
     }
-    colorHexCache[color] = hex;
-    return hex;
+    colorRgbCache[color] = rgb;
+    return rgb;
 }
 
 // Extract 0-255 r/g/b from either "#rrggbb" or "rgb(a)(r, g, b[, a])" —
-// the two formats a canvas 2d context's fillStyle can normalize to.
+// the two formats a browser can normalize a CSS color string to.
 function parseRgb(color: string): [number, number, number] | undefined {
     const hexMatch = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
     if (hexMatch) {
@@ -47,7 +47,7 @@ function parseRgb(color: string): [number, number, number] | undefined {
 
 // Pick black/white text for legibility on an arbitrary fill color.
 function contrastingTextColor(fill: string): string {
-    const rgb = parseRgb(toHex(fill));
+    const rgb = parseRgb(toRgbString(fill));
     if (!rgb) {
         return '#ffffff';
     }
