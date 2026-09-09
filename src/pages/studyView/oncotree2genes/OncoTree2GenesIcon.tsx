@@ -71,7 +71,7 @@ export const OncoTree2GenesIcon: React.FunctionComponent<{
             height="11"
             data-test="o2gl-gene-icon"
             role="img"
-            aria-label="OncoTree2Genes gene"
+            aria-label="OncoTree2Genes-LLM gene"
             focusable="false"
         >
             <circle

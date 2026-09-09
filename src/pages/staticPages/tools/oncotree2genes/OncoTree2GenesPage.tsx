@@ -354,14 +354,14 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
         <PageLayout className={'whiteBackground staticPage'} hideFooter={true}>
             <Helmet>
                 <title>
-                    {'cBioPortal for Cancer Genomics::OncoTree2Genes'}
+                    {'cBioPortal for Cancer Genomics::OncoTree2Genes-LLM'}
                 </title>
             </Helmet>
             <div style={{ padding: '15px 20px' }}>
-                <h1>OncoTree2Genes (O2GL)</h1>
+                <h1>OncoTree2Genes-LLM (O2GL)</h1>
                 <p>
-                    OncoTree2Genes is a large-language-model-generated mapping
-                    from{' '}
+                    OncoTree2Genes-LLM is a large-language-model-generated
+                    mapping from{' '}
                     <a
                         href="https://oncotree.info"
                         target="_blank"
@@ -499,7 +499,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
                 <iframe
                     ref={iframeRef}
                     src={ONCOTREE_BASE}
-                    title="OncoTree2Genes on OncoTree"
+                    title="OncoTree2Genes-LLM on OncoTree"
                     allow="fullscreen"
                     sandbox="allow-scripts allow-same-origin allow-fullscreen"
                     style={{

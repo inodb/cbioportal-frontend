@@ -12,7 +12,7 @@ export function getOncoTree2GenesLinkout() {
             rel="noopener noreferrer"
             onClick={event => event.stopPropagation()}
         >
-            OncoTree2Genes
+            OncoTree2Genes-LLM
         </a>
     );
 }
