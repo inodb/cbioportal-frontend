@@ -494,7 +494,7 @@ export const makeRoutes = () => {
                 <Route path="/oncoprinter" component={OncoprinterTool} />
                 <Route path="/datasets" component={ScrollToTop(DatasetPage)} />
                 <Route
-                    path="/tools/oncotree2genes"
+                    path="/oncotree2genes"
                     component={ScrollToTop(OncoTree2GenesPage)}
                 />
                 <Route path="/installations" component={InstallationMap} />
