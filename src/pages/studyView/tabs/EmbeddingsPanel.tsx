@@ -2127,8 +2127,12 @@ export class EmbeddingsPanel extends React.Component<
         const visualizationProps = {
             data: patientData,
             title: `${this.selectedEmbedding.label} Embedding - ${this.selectedEmbedding.data.title}`,
-            xAxisLabel: `${this.selectedEmbedding.label} 1`,
-            yAxisLabel: `${this.selectedEmbedding.label} 2`,
+            // Just the map's name, not "<label> 1" - the numbered-axis
+            // convention doesn't mean much to a non-technical audience, and
+            // the rotated Y-axis label just overlaps the panel controls
+            // (especially with multiple panels open), so it's dropped
+            // entirely rather than repeating the same name sideways.
+            xAxisLabel: this.selectedEmbedding.label,
             height: this.plotHeight,
             showLegend: true,
             filename: `${this.selectedEmbedding.value}_embedding`,
