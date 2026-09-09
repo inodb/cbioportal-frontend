@@ -37,8 +37,13 @@ export const FEATURE_FLAG_METADATA: {
     [FeatureFlagEnum.LEFT_TRUNCATION_ADJUSTMENT]: {
         description:
             'Adjusts survival curves for left-truncation bias in the ' +
-            'Comparison and Study View survival tabs.',
+            'Comparison and Study View survival tabs. Only has an effect ' +
+            'for the heme_onc_nsclc_genie_bpc GENIE BPC cohort, the only ' +
+            'study with the entry-time data this adjustment needs; it is a ' +
+            'no-op for every other study.',
         userOptIn: true,
+        exampleUrl:
+            '/study?id=heme_onc_nsclc_genie_bpc&featureFlags=LEFT_TRUNCATION_ADJUSTMENT',
     },
     [FeatureFlagEnum.PATIENT_MRNA_TAB]: {
         description:
