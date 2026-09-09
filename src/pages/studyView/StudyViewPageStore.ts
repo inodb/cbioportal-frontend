@@ -426,7 +426,7 @@ type O2glGeneMap = {
     [oncotreeCode: string]: string[];
 };
 
-const O2GL_GENE_MAP: O2glGeneMap = require('pages/studyView/oncotree2genes/o2gl.json');
+const O2GL_GENE_MAP: O2glGeneMap = require('shared/oncotree2genes/o2gl.json');
 const ONCOTREE_CODE_ATTRIBUTE_ID = 'ONCOTREE_CODE';
 
 function getO2glGeneSetForCodes(

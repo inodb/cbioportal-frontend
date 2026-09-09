@@ -40,9 +40,9 @@ import {
     IGeneFilterDropdownOption,
 } from 'pages/studyView/table/GeneFilterDropdown';
 import { getOncoKBCancerGeneListLinkout } from 'pages/studyView/oncokb/OncoKBUtils';
-import { getOncoTree2GenesLinkout } from 'pages/studyView/oncotree2genes/OncoTree2GenesUtils';
+import { getOncoTree2GenesLinkout } from 'shared/oncotree2genes/OncoTree2GenesUtils';
 import { OncoKbCancerGeneIcon } from 'pages/studyView/oncokb/OncoKbCancerGeneIcon';
-import { OncoTree2GenesIcon } from 'pages/studyView/oncotree2genes/OncoTree2GenesIcon';
+import { OncoTree2GenesIcon } from 'shared/oncotree2genes/OncoTree2GenesIcon';
 import {
     STRUCTVARAnyGeneStr,
     STRUCTVARNullGeneStr,

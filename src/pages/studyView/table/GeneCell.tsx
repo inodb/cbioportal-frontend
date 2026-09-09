@@ -14,8 +14,8 @@ import { action, makeObservable, observable } from 'mobx';
 import { observer } from 'mobx-react';
 import LetterIcon from 'shared/components/cohort/LetterIcon';
 import { OncoKbCancerGeneIcon } from 'pages/studyView/oncokb/OncoKbCancerGeneIcon';
-import { OncoTree2GenesIcon } from 'pages/studyView/oncotree2genes/OncoTree2GenesIcon';
-import { getOncoTree2GenesGeneOverlay } from 'pages/studyView/oncotree2genes/OncoTree2GenesUtils';
+import { OncoTree2GenesIcon } from 'shared/oncotree2genes/OncoTree2GenesIcon';
+import { getOncoTree2GenesGeneOverlay } from 'shared/oncotree2genes/OncoTree2GenesUtils';
 
 // Single-line tooltip entry describing the MutSig/GISTIC driver-gene call,
 // matching the OncoKB/O2GL rows so it can live in the shared gene-cell tooltip.

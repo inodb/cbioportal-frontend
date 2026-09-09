@@ -8,7 +8,7 @@ import LazyMobXTable, {
 
 const O2GL_GENE_MAP: {
     [code: string]: string[];
-} = require('pages/studyView/oncotree2genes/o2gl.json');
+} = require('shared/oncotree2genes/o2gl.json');
 
 interface O2glRow {
     code: string;

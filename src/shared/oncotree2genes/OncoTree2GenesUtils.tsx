@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { OncoTree2GenesIcon } from 'pages/studyView/oncotree2genes/OncoTree2GenesIcon';
+import { OncoTree2GenesIcon } from 'shared/oncotree2genes/OncoTree2GenesIcon';
 
 // Internal method page describing the dataset and listing all codes -> genes.
 const ONCOTREE2GENES_PAGE = '/oncotree2genes';
