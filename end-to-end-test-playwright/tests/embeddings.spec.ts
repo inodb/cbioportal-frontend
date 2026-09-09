@@ -74,10 +74,13 @@ test.describe('embeddings tab interactions', () => {
             page,
         }) => {
             await gotoEmbeddings(page);
-            const toggle = page
-                .locator(LEGEND)
-                .getByRole('button')
-                .first();
+            // Not getByRole('button').first(): the legend's collapse/expand
+            // chevron is also a button and sits before this one in the DOM,
+            // and clicking it collapses the panel (removing this button
+            // entirely) rather than toggling categories.
+            const toggle = page.locator(
+                '[data-test="embeddings-legend-toggle-all"]'
+            );
             await expect(toggle).toBeVisible();
 
             await toggle.click();

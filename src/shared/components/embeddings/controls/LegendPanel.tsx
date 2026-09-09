@@ -540,6 +540,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
 
                         return (
                             <button
+                                data-test="embeddings-legend-toggle-all"
                                 onClick={onToggleAllCategories}
                                 style={{
                                     background: '#f8f9fa',
