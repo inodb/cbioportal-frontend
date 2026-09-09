@@ -501,6 +501,7 @@ const OncoTree2GenesPage: React.FunctionComponent<{}> = () => {
                     src={ONCOTREE_BASE}
                     title="OncoTree2Genes-LLM on OncoTree"
                     allow="fullscreen"
+                    sandbox="allow-scripts allow-same-origin allow-fullscreen"
                     style={{
                         width: '100%',
                         height: 600,

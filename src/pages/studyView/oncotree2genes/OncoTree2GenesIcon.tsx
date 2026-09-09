@@ -62,7 +62,14 @@ export const OncoTree2GenesIcon: React.FunctionComponent<{
 }> = ({ color }) => {
     const fill = color || ONCOTREE_BLUE;
     return (
-        <svg width="11" height="11" data-test="o2gl-gene-icon">
+        <svg
+            width="11"
+            height="11"
+            data-test="o2gl-gene-icon"
+            role="img"
+            aria-label="OncoTree2Genes-LLM gene"
+            focusable="false"
+        >
             <circle
                 cx="5.5"
                 cy="5.5"
