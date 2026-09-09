@@ -502,6 +502,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                         }}
                     >
                         <button
+                            data-test="embeddings-pan-button"
                             onClick={() =>
                                 this.onSharedSelectionModeChange('none')
                             }
@@ -535,6 +536,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                             Pan
                         </button>
                         <button
+                            data-test="embeddings-select-button"
                             onClick={() =>
                                 this.onSharedSelectionModeChange('lasso')
                             }
@@ -584,6 +586,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                         }}
                     >
                         <span
+                            data-test="embeddings-status-bar"
                             style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -724,6 +727,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                         {isFilterActive && (
                             <div style={{ display: 'flex', gap: '6px' }}>
                                 <button
+                                    data-test="embeddings-clear-button"
                                     onClick={this.onClearFilter}
                                     title="Clear this selection on every panel"
                                     style={{
@@ -738,6 +742,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                     Clear
                                 </button>
                                 <button
+                                    data-test="embeddings-make-global-button"
                                     onClick={this.onApplyGlobally}
                                     title="Apply this selection as a Study View selection, affecting every tab on the page"
                                     style={{

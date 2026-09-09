@@ -124,14 +124,20 @@ const renderLegendItem = (
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     width: '100%',
+                    minWidth: 0,
                     fontSize: '12px',
                 }}
             >
                 <span
+                    title={displayLabel}
                     style={{
                         textDecoration: isHidden ? 'line-through' : 'none',
                         color: isHidden ? '#CCCCCC' : 'inherit',
                         opacity: isHidden ? 0.6 : 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
                     }}
                 >
                     {displayLabel}
@@ -143,6 +149,8 @@ const renderLegendItem = (
                         fontWeight: 500,
                         opacity: isHidden ? 0.6 : 1,
                         fontSize: '11px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
                     }}
                 >
                     {visibleCount !== undefined && visibleCount !== count

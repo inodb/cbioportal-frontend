@@ -246,6 +246,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         {[1, 2, 3, 4].map(n => (
                             <button
                                 key={n}
+                                data-test={`embeddings-panel-count-${n}`}
                                 onClick={() => onSetPanelCount(n)}
                                 title={`Show ${n} map${n > 1 ? 's' : ''}`}
                                 style={{
