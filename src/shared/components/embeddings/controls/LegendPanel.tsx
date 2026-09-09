@@ -48,6 +48,7 @@ const renderLegendItem = (
     displayLabel: string,
     styling: { fillColor: string; strokeColor: string; hasStroke: boolean },
     count: number,
+    visibleCount: number | undefined,
     isHidden: boolean,
     isClickable: boolean,
     onToggleCategoryVisibility?: (category: string) => void
@@ -144,7 +145,9 @@ const renderLegendItem = (
                         fontSize: '11px',
                     }}
                 >
-                    {formatCount(count)}
+                    {visibleCount !== undefined && visibleCount !== count
+                        ? `${formatCount(visibleCount)} / ${formatCount(count)}`
+                        : formatCount(count)}
                 </span>
             </div>
         </div>
@@ -234,6 +237,12 @@ export interface LegendPanelProps {
     showLegend?: boolean;
     actualHeight: number;
     categoryCounts?: Map<string, number>;
+    // Per-category counts after every active filter - shown alongside
+    // categoryCounts' raw/unfiltered totals as "visible / total" so a
+    // category whose points got filtered out (by this panel's own toggles
+    // or another panel's lasso selection) doesn't look unchanged just
+    // because its raw total is still the same.
+    visibleCategoryCounts?: Map<string, number>;
     categoryColors?: Map<
         string,
         { fillColor: string; strokeColor: string; hasStroke: boolean }
@@ -261,6 +270,12 @@ export interface LegendPanelProps {
     // Falls back to local state when omitted.
     isCollapsed?: boolean;
     onCollapsedChange?: (collapsed: boolean) => void;
+    // Highlights the legend with a colored border when a cross-panel
+    // sample filter is currently active (from this panel's own legend
+    // selection, or another panel's) - a quick visual cue that what's
+    // rendered is a filtered subset, even on a non-primary panel that
+    // doesn't show the Total/Visible Samples header.
+    isFilterActive?: boolean;
 }
 
 export const LegendPanel: React.FC<LegendPanelProps> = ({
@@ -268,6 +283,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
     showLegend = true,
     actualHeight,
     categoryCounts,
+    visibleCategoryCounts,
     categoryColors,
     hiddenCategories,
     onToggleCategoryVisibility,
@@ -284,6 +300,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
     numericalValueToColor,
     isCollapsed: controlledIsCollapsed,
     onCollapsedChange,
+    isFilterActive = false,
 }) => {
     const [isConfigExpanded, setIsConfigExpanded] = React.useState(false);
     const [localIsCollapsed, setLocalIsCollapsed] = React.useState(false);
@@ -451,51 +468,20 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                 right: '10px',
                 zIndex: 1,
                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                border: '1px solid #ccc',
+                border: isFilterActive ? '2px solid #ffc107' : '1px solid #ccc',
                 borderRadius: '3px',
                 padding: '8px',
                 fontSize: '10px',
                 maxHeight: `${actualHeight - 20}px`,
                 minWidth: categoryCounts ? '220px' : '160px',
                 maxWidth: '300px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                boxShadow: isFilterActive
+                    ? '0 0 0 1px #ffc107, 0 2px 8px rgba(0,0,0,0.1)'
+                    : '0 2px 8px rgba(0,0,0,0.1)',
                 display: 'flex',
                 flexDirection: 'column',
             }}
         >
-            {/* Status information at the top - only on the primary panel */}
-            {showHeaderAndConfiguration &&
-                visibleSampleCount !== undefined &&
-                totalSampleCount !== undefined &&
-                visibleCategoryCount !== undefined &&
-                totalCategoryCount !== undefined && (
-                    <div
-                        style={{
-                            marginBottom: '8px',
-                            paddingBottom: '8px',
-                            borderBottom: '1px solid #eee',
-                            fontSize: '12px',
-                            color: '#666',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <div style={{ marginBottom: '3px' }}>
-                            <strong>Total Samples:</strong>{' '}
-                            {formatCount(totalSampleCount)}
-                        </div>
-                        <div style={{ marginBottom: '5px' }}>
-                            <strong>Visible Samples:</strong>{' '}
-                            {formatCount(visibleSampleCount)} (
-                            {visibleCategoryCount}/{totalCategoryCount} types)
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#999' }}>
-                            Click items to toggle visibility •{' '}
-                            {visibleCategoryCount} of {totalCategoryCount}{' '}
-                            cancer types enabled
-                        </div>
-                    </div>
-                )}
-
             {/* Header with buttons - Always visible */}
             <div
                 style={{
@@ -616,6 +602,17 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             ([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
+                                // A category with zero currently-visible
+                                // points has no entry in the map at all
+                                // (nothing to count), which must still
+                                // read as 0 here - not "no filter active"
+                                // (Map.get's undefined) - or a fully
+                                // hidden category would wrongly show its
+                                // raw, unfiltered count.
+                                const visibleCount = visibleCategoryCounts
+                                    ? visibleCategoryCounts.get(displayLabel) ||
+                                      0
+                                    : undefined;
                                 const isHidden =
                                     hiddenCategories?.has(displayLabel) ||
                                     false;
@@ -626,6 +623,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                                     displayLabel,
                                     styling,
                                     count,
+                                    visibleCount,
                                     isHidden,
                                     isClickable,
                                     onToggleCategoryVisibility
@@ -688,6 +686,17 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             {qcEntries.map(([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
+                                // A category with zero currently-visible
+                                // points has no entry in the map at all
+                                // (nothing to count), which must still
+                                // read as 0 here - not "no filter active"
+                                // (Map.get's undefined) - or a fully
+                                // hidden category would wrongly show its
+                                // raw, unfiltered count.
+                                const visibleCount = visibleCategoryCounts
+                                    ? visibleCategoryCounts.get(displayLabel) ||
+                                      0
+                                    : undefined;
                                 const toggleQcVisibility =
                                     onToggleQcCategoryVisibility ||
                                     onToggleCategoryVisibility;
@@ -702,6 +711,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                                     displayLabel,
                                     styling,
                                     count,
+                                    visibleCount,
                                     isHidden,
                                     isClickable,
                                     toggleQcVisibility

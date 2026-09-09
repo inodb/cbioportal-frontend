@@ -742,12 +742,28 @@ export default class StudyViewPage extends React.Component<
                                         return this.toolbarLeft;
                                     }} // dont run into other study view UI
                                     contentWindowExtra={
-                                        <HelpWidget
-                                            path={
-                                                this.props.routing.location
-                                                    .pathname
-                                            }
-                                        />
+                                        // The Study Page Help content
+                                        // doesn't cover the Similarity Maps
+                                        // (embeddings) tab, so don't show a
+                                        // help link that wouldn't actually
+                                        // help there.
+                                        // StudyViewPageTabKey (currentTab's
+                                        // declared return type) is a
+                                        // pre-existing, narrower union that
+                                        // doesn't list EMBEDDINGS at all -
+                                        // cast through string since the
+                                        // runtime value is unrestricted.
+                                        (this.store.currentTab as string) !==
+                                        StudyViewPageTabKeyEnum.EMBEDDINGS ? (
+                                            <HelpWidget
+                                                path={
+                                                    this.props.routing.location
+                                                        .pathname
+                                                }
+                                            />
+                                        ) : (
+                                            undefined
+                                        )
                                     }
                                     hrefRoot={buildCBioPortalPageUrl('study')}
                                 >

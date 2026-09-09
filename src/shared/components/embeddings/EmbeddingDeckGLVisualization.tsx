@@ -221,6 +221,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                 showLegend={this.props.showLegend}
                 actualHeight={this.state.actualHeight}
                 categoryCounts={this.props.categoryCounts}
+                visibleCategoryCounts={this.props.visibleCategoryCounts}
                 categoryColors={this.props.categoryColors}
                 hiddenCategories={this.props.hiddenCategories}
                 onToggleCategoryVisibility={
@@ -243,6 +244,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                 isNumericAttribute={this.props.isNumericAttribute}
                 numericalValueRange={this.props.numericalValueRange}
                 numericalValueToColor={this.props.numericalValueToColor}
+                isFilterActive={this.props.isFilterActive}
             />
         );
     }

@@ -74,6 +74,10 @@ export interface EmbeddingVisualizationProps {
     onViewStateChange?: (viewState: ViewState) => void;
     embeddingType?: 'patients' | 'samples';
     categoryCounts?: Map<string, number>;
+    // Per-category counts after every active filter (legend hide/select,
+    // lasso, cross-panel selection) - shown alongside categoryCounts'
+    // raw/unfiltered totals in the legend, as "visible / total".
+    visibleCategoryCounts?: Map<string, number>;
     categoryColors?: Map<
         string,
         { fillColor: string; strokeColor: string; hasStroke: boolean }
@@ -99,6 +103,10 @@ export interface EmbeddingVisualizationProps {
     totalSampleCount?: number;
     visibleCategoryCount?: number;
     totalCategoryCount?: number;
+    // Highlights the legend with a colored border when a cross-panel
+    // sample filter is currently active - from this panel's own legend
+    // selection, or another panel's (see EmbeddingsTab's hiddenSampleKeys).
+    isFilterActive?: boolean;
     isNumericAttribute?: boolean;
     numericalValueRange?: [number, number];
     numericalValueToColor?: (x: number) => string;

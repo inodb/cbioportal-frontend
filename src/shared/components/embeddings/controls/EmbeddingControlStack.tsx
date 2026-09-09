@@ -18,6 +18,12 @@ export interface EmbeddingControlStackProps {
     // (gated by the panel while it's waiting on data needed to resolve a
     // URL-driven selection, to avoid flashing the wrong default).
     showMapColorTooltipControls: boolean;
+    // Suppresses just the Map dropdown here - EmbeddingsTab renders it in
+    // its own top bar instead when this is the only panel (each Map only
+    // makes sense to pick per-panel once there's more than one).
+    // Defaults to true (shown) so multi-panel callers don't need to think
+    // about it.
+    showMapInControlStack?: boolean;
 
     // Color by
     genes: Gene[];
@@ -47,11 +53,8 @@ export interface EmbeddingControlStackProps {
     selectedTooltipFields: Set<string>;
     onTooltipFieldsChange: (fields: Set<string>) => void;
 
-    // Pan/Select + Center + Export
-    onExport: () => void;
+    // Center (Pan/Select now lives in EmbeddingsTab's top bar, not here)
     onCenter: () => void;
-    selectionMode: 'none' | 'lasso';
-    onSelectionModeChange: (mode: 'none' | 'lasso') => void;
     // Shared toggle, shown only on the primary panel: when on, every
     // non-primary panel follows the primary panel's pan/zoom instead of
     // moving independently.
@@ -100,6 +103,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     selectedMapOption,
     onMapChange,
     showMapColorTooltipControls,
+    showMapInControlStack = true,
     genes,
     clinicalAttributes,
     additionalGroups,
@@ -121,10 +125,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     tooltipFieldGroups,
     selectedTooltipFields,
     onTooltipFieldsChange,
-    onExport,
     onCenter,
-    selectionMode,
-    onSelectionModeChange,
     isLockedToPrimary,
     onToggleLockedToPrimary,
     panelIndex,
@@ -149,7 +150,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                 fontFamily: 'inherit',
             }}
         >
-            {showMapColorTooltipControls && (
+            {showMapColorTooltipControls && showMapInControlStack && (
                 <div style={{ width: '190px' }}>
                     <span style={ROW_LABEL_STYLE}>Map</span>
                     <Select
@@ -160,80 +161,6 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         isSearchable={false}
                         styles={SELECT_STYLES}
                     />
-                </div>
-            )}
-
-            {isPrimaryPanel && (
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: '2px',
-                        ...BOX_STYLE,
-                        padding: '2px',
-                    }}
-                >
-                    <button
-                        onClick={() => onSelectionModeChange('none')}
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            backgroundColor:
-                                selectionMode === 'none'
-                                    ? '#007bff'
-                                    : 'transparent',
-                            color: selectionMode === 'none' ? 'white' : '#333',
-                        }}
-                        title="Pan and zoom the visualization"
-                    >
-                        <i
-                            className="fa-regular fa-hand"
-                            style={{ marginRight: '4px', fontSize: '11px' }}
-                        ></i>
-                        Pan
-                    </button>
-                    <button
-                        onClick={() => onSelectionModeChange('lasso')}
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            backgroundColor:
-                                selectionMode === 'lasso'
-                                    ? '#007bff'
-                                    : 'transparent',
-                            color: selectionMode === 'lasso' ? 'white' : '#333',
-                        }}
-                        title="Draw a freeform lasso to select points"
-                    >
-                        <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeDasharray="4,4"
-                            style={{ marginRight: '4px' }}
-                        >
-                            <path d="M3 8c0-3 2-5 6-5s8 2 10 6c2 4 1 8-2 10s-7 2-10 0S1 13 3 8Z" />
-                        </svg>
-                        Select
-                    </button>
                 </div>
             )}
 
@@ -364,20 +291,6 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         </button>
                     )}
                 </div>
-            )}
-
-            {isPrimaryPanel && (
-                <button
-                    onClick={onExport}
-                    style={{
-                        ...BOX_STYLE,
-                        padding: '4px 8px',
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                    }}
-                >
-                    Export PNG
-                </button>
             )}
         </div>
     );
