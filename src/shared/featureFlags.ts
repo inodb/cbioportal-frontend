@@ -91,6 +91,7 @@ export const FEATURE_FLAG_METADATA: {
         userOptIn: true,
         exampleUrl:
             '/study/embeddings?id=msk_impact_50k_2026&featureFlags=EMBEDDINGS',
+        portals: ['mskcc-portal'],
     },
 };
 

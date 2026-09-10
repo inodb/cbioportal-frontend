@@ -1,9 +1,16 @@
+export interface RecentReleaseSecondaryLink {
+    label: string;
+    url: string;
+}
+
 export interface RecentRelease {
     id: string;
     title: string;
     category: string;
     description: string;
     getUrl: (appName: string | undefined | null) => string;
+    /** an additional, less prominent link (e.g. "read the docs") */
+    secondaryLink?: RecentReleaseSecondaryLink;
     /** restricts visibility to these app_names. Omit for "every portal". */
     portals?: string[];
 }
@@ -20,6 +27,8 @@ export const RECENT_RELEASES: RecentRelease[] = [
             appName === 'mskcc-portal'
                 ? 'https://chat.cbioportal.aws.mskcc.org'
                 : 'https://chat.cbioportal.org',
+        // TODO: fill in once we have a public URL for the MCP server docs
+        // secondaryLink: { label: 'MCP instructions', url: '???' },
         portals: ['mskcc-portal', 'public-portal'],
     },
 ];

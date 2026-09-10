@@ -153,7 +153,6 @@ export default class FeatureFlagsModal extends React.Component<
                 <div className={styles.detailHeader}>
                     <div>
                         <h4>{title}</h4>
-                        <div className={styles.flagId}>{flag}</div>
                     </div>
                     {optable ? (
                         <a
@@ -185,11 +184,6 @@ export default class FeatureFlagsModal extends React.Component<
                         <a href={exampleUrl}>See an example</a>
                     </div>
                 )}
-                {optable && (
-                    <p className={styles.subtext}>
-                        Disabling a flag reloads the page to apply the change.
-                    </p>
-                )}
             </div>
         );
     }
@@ -209,6 +203,14 @@ export default class FeatureFlagsModal extends React.Component<
                     <a href={release.getUrl(appName)} target="_blank">
                         Open <FontAwesome name="external-link" />
                     </a>
+                    {release.secondaryLink && (
+                        <>
+                            {' · '}
+                            <a href={release.secondaryLink.url} target="_blank">
+                                {release.secondaryLink.label}
+                            </a>
+                        </>
+                    )}
                 </div>
             </div>
         );

@@ -4,7 +4,6 @@ declare const styles: {
   readonly "detail": string;
   readonly "detailHeader": string;
   readonly "fa-toggle-on": string;
-  readonly "flagId": string;
   readonly "layout": string;
   readonly "meta": string;
   readonly "selected": string;
