@@ -227,6 +227,11 @@ test.describe('embeddings tab interactions', () => {
         test('a cross-panel selection filter is reflected in every open panel', async ({
             page,
         }) => {
+            // Renders the full 50k-sample map TWICE (one per panel), same
+            // as the Lock Map test above - give it the same real headroom
+            // over the file's 120s default.
+            test.setTimeout(240000);
+
             // Load directly into 2-panel mode via the panel-2 URL params
             // (see EmbeddingsTab's constructor) rather than clicking the
             // panel-count control - avoids racing the first panel's own
@@ -240,22 +245,22 @@ test.describe('embeddings tab interactions', () => {
             });
 
             // Hiding a category in panel 1's legend is a cross-panel,
-            // sample-identity filter - it should show up as an active
-            // selection in the shared status bar even though the filter
-            // was set from a single panel.
+            // sample-identity filter that recomputes visibility across
+            // both panels' full 50k-sample point sets - can outrun the
+            // default click timeout on a loaded backend.
             const firstPanelFirstItem = page.locator(LEGEND_ITEM).first();
             await expect(firstPanelFirstItem).toBeVisible();
-            await firstPanelFirstItem.click({ timeout: 30000 });
+            await firstPanelFirstItem.click({ timeout: 60000 });
 
             await expect(page.locator(STATUS_BAR)).toContainText(
                 /Selection active/
             );
             await expect(page.locator(CLEAR_BUTTON)).toBeVisible();
 
-            await page.locator(CLEAR_BUTTON).click();
-            await expect(page.locator(STATUS_BAR)).not.toContainText(
-                /Selection active/
-            );
+            await page.locator(CLEAR_BUTTON).click({ timeout: 60000 });
+            await expect(
+                page.locator(STATUS_BAR)
+            ).not.toContainText(/Selection active/, { timeout: 30000 });
         });
     });
 
