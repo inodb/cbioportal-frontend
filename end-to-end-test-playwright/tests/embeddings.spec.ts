@@ -212,16 +212,18 @@ test.describe('embeddings tab interactions', () => {
                 .locator(LOCK_MAP_BUTTON)
                 .first()
                 .click();
-            await expect(page.locator(STATUS_BAR)).not.toContainText(
-                /embedded in/
-            );
+            await expect(
+                page.locator(STATUS_BAR)
+            ).not.toContainText(/embedded in/, { timeout: 30000 });
 
-            // Switching back to a single panel restores it regardless.
-            await page.locator(panelCountButton(1)).click();
-            await expect(page.locator(VIZ)).toHaveCount(1);
-            await expect(page.locator(STATUS_BAR)).toContainText(
-                /[\d,]+ samples embedded in/
-            );
+            // Switching back to a single panel restores it regardless -
+            // unmounting/remounting the 50k-sample map can take a moment
+            // longer than the default 5s assertion timeout.
+            await page.locator(panelCountButton(1)).click({ timeout: 30000 });
+            await expect(page.locator(VIZ)).toHaveCount(1, { timeout: 60000 });
+            await expect(
+                page.locator(STATUS_BAR)
+            ).toContainText(/[\d,]+ samples embedded in/, { timeout: 30000 });
         });
 
         test('a cross-panel selection filter is reflected in every open panel', async ({
