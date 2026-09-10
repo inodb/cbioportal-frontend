@@ -14,6 +14,11 @@ import {
     isFeatureFlagRelevantForStudies,
     isFeatureFlagStudySpecific,
 } from 'shared/featureFlags';
+import {
+    RECENT_RELEASES,
+    RecentRelease,
+    isRecentReleaseVisible,
+} from 'shared/recentReleases';
 import { FeatureFlagsModalStore } from './FeatureFlagsModalStore';
 import styles from './styles.module.scss';
 
@@ -22,13 +27,17 @@ export interface IFeatureFlagsModalProps {
     onHide: () => void;
 }
 
+type ModalItem =
+    | { kind: 'flag'; id: string; flag: FeatureFlagEnum }
+    | { kind: 'release'; id: string; release: RecentRelease };
+
 @observer
 export default class FeatureFlagsModal extends React.Component<
     IFeatureFlagsModalProps,
     {}
 > {
     private store = new FeatureFlagsModalStore();
-    @observable.ref private _selectedFlag: FeatureFlagEnum | undefined;
+    @observable.ref private _selectedId: string | undefined;
 
     constructor(props: IFeatureFlagsModalProps) {
         super(props);
@@ -44,8 +53,8 @@ export default class FeatureFlagsModal extends React.Component<
     }
 
     @action.bound
-    private selectFlag(flag: FeatureFlagEnum) {
-        this._selectedFlag = flag;
+    private selectItem(id: string) {
+        this._selectedId = id;
     }
 
     private get visibleFlags(): FeatureFlagEnum[] {
@@ -69,29 +78,65 @@ export default class FeatureFlagsModal extends React.Component<
         });
     }
 
-    private get selectedFlag(): FeatureFlagEnum | undefined {
-        return this._selectedFlag ?? this.visibleFlags[0];
+    private get visibleReleases(): RecentRelease[] {
+        const appName = getServerConfig().app_name;
+        return RECENT_RELEASES.filter(release =>
+            isRecentReleaseVisible(release, appName)
+        );
     }
 
-    private get groupedVisibleFlags(): {
-        category: string;
-        flags: FeatureFlagEnum[];
-    }[] {
+    private get visibleItems(): ModalItem[] {
+        return [
+            ...this.visibleFlags.map(
+                (flag): ModalItem => ({ kind: 'flag', id: flag, flag })
+            ),
+            ...this.visibleReleases.map(
+                (release): ModalItem => ({
+                    kind: 'release',
+                    id: release.id,
+                    release,
+                })
+            ),
+        ];
+    }
+
+    private itemCategory(item: ModalItem): string {
         const appName = getServerConfig().app_name;
-        const groups: { category: string; flags: FeatureFlagEnum[] }[] = [];
-        this.visibleFlags.forEach(flag => {
-            const { category } = getFeatureFlagDisplayInfo(flag, appName);
+        return item.kind === 'flag'
+            ? getFeatureFlagDisplayInfo(item.flag, appName).category
+            : item.release.category;
+    }
+
+    private itemTitle(item: ModalItem): string {
+        const appName = getServerConfig().app_name;
+        return item.kind === 'flag'
+            ? getFeatureFlagDisplayInfo(item.flag, appName).title
+            : item.release.title;
+    }
+
+    private get selectedItem(): ModalItem | undefined {
+        const items = this.visibleItems;
+        return items.find(item => item.id === this._selectedId) ?? items[0];
+    }
+
+    private get groupedVisibleItems(): {
+        category: string;
+        items: ModalItem[];
+    }[] {
+        const groups: { category: string; items: ModalItem[] }[] = [];
+        this.visibleItems.forEach(item => {
+            const category = this.itemCategory(item);
             let group = groups.find(g => g.category === category);
             if (!group) {
-                group = { category, flags: [] };
+                group = { category, items: [] };
                 groups.push(group);
             }
-            group.flags.push(flag);
+            group.items.push(item);
         });
         return groups;
     }
 
-    private renderDetail(flag: FeatureFlagEnum) {
+    private renderFlagDetail(flag: FeatureFlagEnum) {
         const appName = getServerConfig().app_name;
         const { featureFlagStore } = this.props;
         const enabled = featureFlagStore.has(flag);
@@ -149,11 +194,36 @@ export default class FeatureFlagsModal extends React.Component<
         );
     }
 
+    private renderReleaseDetail(release: RecentRelease) {
+        const appName = getServerConfig().app_name;
+        return (
+            <div className={styles.detail}>
+                <div className={styles.detailHeader}>
+                    <div>
+                        <h4>{release.title}</h4>
+                    </div>
+                    <span className={styles.badge}>Recently released</span>
+                </div>
+                <p className={styles.subtext}>{release.description}</p>
+                <div className={styles.meta}>
+                    <a href={release.getUrl(appName)} target="_blank">
+                        Open <FontAwesome name="external-link" />
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    private renderDetail(item: ModalItem) {
+        return item.kind === 'flag'
+            ? this.renderFlagDetail(item.flag)
+            : this.renderReleaseDetail(item.release);
+    }
+
     render() {
         const { featureFlagStore, onHide } = this.props;
-        const appName = getServerConfig().app_name;
-        const groups = this.groupedVisibleFlags;
-        const selected = this.selectedFlag;
+        const groups = this.groupedVisibleItems;
+        const selected = this.selectedItem;
         const isLoading = this.store.accessibleStudyIds.isPending;
 
         return (
@@ -165,8 +235,8 @@ export default class FeatureFlagsModal extends React.Component<
                 </Modal.Header>
                 <Modal.Body>
                     <p className={styles.subtext}>
-                        Get early access to features we're still working on. See
-                        our{' '}
+                        Get early access to features we're still working on, and
+                        see what's recently launched. See our{' '}
                         <a
                             href="https://about.cbioportal.org/roadmap"
                             target="_blank"
@@ -185,32 +255,30 @@ export default class FeatureFlagsModal extends React.Component<
                                         <li className={styles.categoryHeader}>
                                             {group.category}
                                         </li>
-                                        {group.flags.map(flag => (
+                                        {group.items.map(item => (
                                             <li
-                                                key={flag}
+                                                key={item.id}
                                                 className={classNames({
                                                     [styles.selected]:
-                                                        flag === selected,
+                                                        selected &&
+                                                        item.id === selected.id,
                                                 })}
                                                 onClick={() =>
-                                                    this.selectFlag(flag)
+                                                    this.selectItem(item.id)
                                                 }
                                             >
                                                 <FontAwesome
                                                     name={
-                                                        featureFlagStore.has(
-                                                            flag
-                                                        )
-                                                            ? 'toggle-on'
-                                                            : 'toggle-off'
+                                                        item.kind === 'flag'
+                                                            ? featureFlagStore.has(
+                                                                  item.flag
+                                                              )
+                                                                ? 'toggle-on'
+                                                                : 'toggle-off'
+                                                            : 'star'
                                                     }
                                                 />{' '}
-                                                {
-                                                    getFeatureFlagDisplayInfo(
-                                                        flag,
-                                                        appName
-                                                    ).title
-                                                }
+                                                {this.itemTitle(item)}
                                             </li>
                                         ))}
                                     </React.Fragment>

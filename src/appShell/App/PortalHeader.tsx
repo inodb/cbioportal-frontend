@@ -15,6 +15,10 @@ import { getLoadConfig, getServerConfig } from 'config/config';
 import FontAwesome from 'react-fontawesome';
 import FeatureFlagsModal from '../../shared/components/featureFlags/FeatureFlagsModal';
 import { hasEnableableFeatureFlags } from '../../shared/featureFlags';
+import {
+    RECENT_RELEASES,
+    isRecentReleaseVisible,
+} from '../../shared/recentReleases';
 
 @observer
 export default class PortalHeader extends React.Component<
@@ -22,6 +26,19 @@ export default class PortalHeader extends React.Component<
     { datDropdownOpen: boolean; featureFlagsModalOpen: boolean }
 > {
     state = { datDropdownOpen: false, featureFlagsModalOpen: false };
+
+    private hasFeatureFlagsModalContent() {
+        const appName = getServerConfig().app_name;
+        return (
+            hasEnableableFeatureFlags(
+                this.props.appStore.featureFlagStore,
+                appName
+            ) ||
+            RECENT_RELEASES.some(release =>
+                isRecentReleaseVisible(release, appName)
+            )
+        );
+    }
 
     private handleDatDropdownToggle = (isOpen: boolean) => {
         if (isOpen) {
@@ -197,12 +214,7 @@ export default class PortalHeader extends React.Component<
                     </nav>
                 </div>
                 <div id="rightHeaderContent">
-                    <If
-                        condition={hasEnableableFeatureFlags(
-                            this.props.appStore.featureFlagStore,
-                            getServerConfig().app_name
-                        )}
-                    >
+                    <If condition={this.hasFeatureFlagsModalContent()}>
                         <a
                             id="feature-flags-icon"
                             title="Experimental features available"
