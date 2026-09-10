@@ -554,7 +554,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                             styles={MAP_SELECT_STYLES}
                                         />
                                     ) : null}{' '}
-                                    similarity map (constructed using{' '}
+                                    (constructed using{' '}
                                     {this.reportedEmbeddingSampleSize.toLocaleString()}{' '}
                                     {this.unitLabel})
                                 </>
@@ -599,12 +599,12 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                                         so only the{' '}
                                                         {this.unitLabel} that
                                                         were part of building it
-                                                        show up here (in your
+                                                        show up here (in this
                                                         case,{' '}
                                                         <strong>
                                                             {this.reportedTotalSampleCount.toLocaleString()}
                                                         </strong>{' '}
-                                                        of your cohort&apos;s{' '}
+                                                        of this cohort&apos;s{' '}
                                                         <strong>
                                                             {this.reportedCohortCount.toLocaleString()}
                                                         </strong>{' '}
@@ -627,11 +627,10 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                                         ).toLocaleString()}
                                                     </strong>{' '}
                                                     {this.unitLabel} from
-                                                    outside your current cohort
-                                                    - shown here too, but you
-                                                    can hide them via the
-                                                    legend&apos;s Configuration
-                                                    section.
+                                                    outside this cohort - shown
+                                                    here too, but can be hidden
+                                                    via the legend&apos;s
+                                                    Configuration section.
                                                 </div>
                                             )}
                                         </div>

@@ -239,6 +239,12 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                 isNumericAttribute={this.props.isNumericAttribute}
                 numericalValueRange={this.props.numericalValueRange}
                 numericalValueToColor={this.props.numericalValueToColor}
+                autoNumericalValueRange={this.props.autoNumericalValueRange}
+                numericalHistogramBins={this.props.numericalHistogramBins}
+                gradientOverride={this.props.gradientOverride}
+                onGradientOverrideChange={this.props.onGradientOverrideChange}
+                onGradientOverrideReset={this.props.onGradientOverrideReset}
+                onClipToPercentile={this.props.onClipToPercentile}
                 isFilterActive={this.props.isFilterActive}
             />
         );
@@ -527,15 +533,7 @@ export class EmbeddingDeckGLVisualization extends React.Component<
 
         return (
             <div
-                style={{
-                    position: 'absolute',
-                    top: '10px',
-                    left: '10px',
-                    zIndex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
             >
                 <ToolbarControls
                     onExport={this.exportToPNG}
@@ -606,9 +604,30 @@ export class EmbeddingDeckGLVisualization extends React.Component<
                     />
 
                     {this.renderTooltip()}
-                    {this.renderLegend()}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            zIndex: 1,
+                        }}
+                    >
+                        {this.renderControls()}
+                    </div>
+                    {/* Higher z-index than the controls above so the legend
+                        (which can grow wide with long category names) draws
+                        on top if the two ever overlap at narrow widths. */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            zIndex: 2,
+                        }}
+                    >
+                        {this.renderLegend()}
+                    </div>
                     {this.renderAxisLabels()}
-                    {this.renderControls()}
                     {this.renderSelectionOverlay()}
 
                     {/* Show message when no points are visible */}

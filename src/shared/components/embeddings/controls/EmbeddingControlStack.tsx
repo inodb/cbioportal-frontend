@@ -26,8 +26,6 @@ export interface EmbeddingControlStackProps {
     clinicalAttributes: ClinicalAttribute[];
     additionalGroups?: ColoringMenuOmnibarGroup[];
     selectedColoringOption?: ColoringMenuOmnibarOption;
-    logScale: boolean;
-    logScalePossible: boolean;
     isLoading: boolean;
     mutationDataExists: boolean;
     cnaDataExists: boolean;
@@ -36,7 +34,6 @@ export interface EmbeddingControlStackProps {
     copyNumberEnabled: boolean;
     structuralVariantEnabled: boolean;
     onColoringSelectionChange: (option?: ColoringMenuOmnibarOption) => void;
-    onLogScaleChange: (enabled: boolean) => void;
     onMutationTypeToggle: (enabled: boolean) => void;
     onCopyNumberToggle: (enabled: boolean) => void;
     onStructuralVariantToggle: (enabled: boolean) => void;
@@ -100,8 +97,6 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     clinicalAttributes,
     additionalGroups,
     selectedColoringOption,
-    logScale,
-    logScalePossible,
     isLoading,
     mutationDataExists,
     cnaDataExists,
@@ -110,7 +105,6 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     copyNumberEnabled,
     structuralVariantEnabled,
     onColoringSelectionChange,
-    onLogScaleChange,
     onMutationTypeToggle,
     onCopyNumberToggle,
     onStructuralVariantToggle,
@@ -133,14 +127,11 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
     return (
         <div
             style={{
-                position: 'absolute',
-                top: '10px',
-                left: '10px',
-                zIndex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '6px',
                 fontFamily: 'inherit',
+                flexShrink: 0,
             }}
         >
             {showMapColorTooltipControls && showMapInControlStack && (
@@ -165,9 +156,7 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         clinicalAttributes={clinicalAttributes}
                         additionalGroups={additionalGroups}
                         selectedOption={selectedColoringOption}
-                        logScale={logScale}
                         hasNoQueriedGenes={true}
-                        logScalePossible={logScalePossible}
                         isLoading={isLoading}
                         mutationDataExists={mutationDataExists}
                         cnaDataExists={cnaDataExists}
@@ -177,7 +166,6 @@ export const EmbeddingControlStack: React.FC<EmbeddingControlStackProps> = ({
                         structuralVariantEnabled={structuralVariantEnabled}
                         stacked
                         onSelectionChange={onColoringSelectionChange}
-                        onLogScaleChange={onLogScaleChange}
                         onMutationTypeToggle={onMutationTypeToggle}
                         onCopyNumberToggle={onCopyNumberToggle}
                         onStructuralVariantToggle={onStructuralVariantToggle}

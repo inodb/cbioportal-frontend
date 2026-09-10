@@ -84,10 +84,13 @@ test.describe('embeddings tab interactions', () => {
             );
             await expect(toggle).toBeVisible();
 
-            await toggle.click();
+            // Hiding/showing every category recomputes visibility for the
+            // full 50k-sample point set, which can outrun the default 15s
+            // click timeout on a loaded backend - give it more headroom.
+            await toggle.click({ timeout: 30000 });
             await expect(toggle).toContainText('Show All');
 
-            await toggle.click();
+            await toggle.click({ timeout: 30000 });
             await expect(toggle).toContainText('Hide All');
         });
 
@@ -182,6 +185,12 @@ test.describe('embeddings tab interactions', () => {
         test('hides the per-embedding status sentence once Lock Map is disabled with multiple panels open', async ({
             page,
         }) => {
+            // This test renders the full 50k-sample map TWICE (one per
+            // panel) - measured ~66s end-to-end in a clean run, so give it
+            // real headroom over the file's 120s default instead of relying
+            // on it never running slower than that.
+            test.setTimeout(240000);
+
             // Single panel: the status bar reports this one panel's map and
             // its sample counts.
             await gotoEmbeddings(page);
@@ -191,11 +200,11 @@ test.describe('embeddings tab interactions', () => {
 
             // Lock Map defaults to on, so opening a second panel still
             // shows one shared map/sample-size in the status bar.
-            await page.locator(panelCountButton(2)).click();
-            await expect(page.locator(VIZ)).toHaveCount(2, { timeout: 30000 });
-            await expect(page.locator(STATUS_BAR)).toContainText(
-                /[\d,]+ samples embedded in/
-            );
+            await page.locator(panelCountButton(2)).click({ timeout: 30000 });
+            await expect(page.locator(VIZ)).toHaveCount(2, { timeout: 60000 });
+            await expect(
+                page.locator(STATUS_BAR)
+            ).toContainText(/[\d,]+ samples embedded in/, { timeout: 60000 });
 
             // Disabling Lock Map lets each panel pick a different map, so
             // there's no longer a single "the" map/sample-size to report.

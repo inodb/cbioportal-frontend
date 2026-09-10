@@ -133,7 +133,8 @@ export function getEmbeddingDataFields(
 export function preComputeEmbeddingDataColors(
     embeddingData: EmbeddingData,
     fieldName: string,
-    isNumeric: boolean
+    isNumeric: boolean,
+    numericalValueToColorOverride?: (x: number) => string
 ): {
     colorMap: Map<string, string>;
     valueMap: Map<string, string>;
@@ -161,8 +162,9 @@ export function preComputeEmbeddingDataColors(
         }
 
         const range = max - min || 1; // Avoid division by zero
-        const numericalColorFn = (x: number) =>
-            interpolateReds((x - min) / range);
+        const numericalColorFn =
+            numericalValueToColorOverride ||
+            ((x: number) => interpolateReds((x - min) / range));
 
         const idKey =
             embeddingData.embedding_type === 'patients'
@@ -320,7 +322,7 @@ export function makeEmbeddingScatterPlotData(
     mutationTypeEnabled: boolean = true,
     copyNumberEnabled: boolean = true,
     structuralVariantEnabled: boolean = true,
-    coloringLogScale: boolean = false
+    numericalValueToColorOverride?: (x: number) => string
 ): EmbeddingPlotPoint[] {
     if (embeddingData.embedding_type === 'samples') {
         return transformSampleEmbedding(
@@ -330,7 +332,7 @@ export function makeEmbeddingScatterPlotData(
             mutationTypeEnabled,
             copyNumberEnabled,
             structuralVariantEnabled,
-            coloringLogScale
+            numericalValueToColorOverride
         );
     } else {
         return transformPatientEmbedding(
@@ -340,7 +342,7 @@ export function makeEmbeddingScatterPlotData(
             mutationTypeEnabled,
             copyNumberEnabled,
             structuralVariantEnabled,
-            coloringLogScale
+            numericalValueToColorOverride
         );
     }
 }
@@ -355,7 +357,7 @@ function transformPatientEmbedding(
     mutationTypeEnabled: boolean = true,
     copyNumberEnabled: boolean = true,
     structuralVariantEnabled: boolean = true,
-    coloringLogScale: boolean = false
+    numericalValueToColorOverride?: (x: number) => string
 ): EmbeddingPlotPoint[] {
     const allSamples = store.samples.result || [];
     const patientLookupMap = createSampleLookupMap(allSamples);
@@ -411,7 +413,8 @@ function transformPatientEmbedding(
         const result = preComputeEmbeddingDataColors(
             embeddingData,
             fieldName,
-            isNumericEmbeddingField
+            isNumericEmbeddingField,
+            isNumericEmbeddingField ? numericalValueToColorOverride : undefined
         );
         embeddingDataColorMap = result.colorMap;
         embeddingDataValueMap = result.valueMap;
@@ -448,7 +451,8 @@ function transformPatientEmbedding(
                 isNumericClinicalAttribute
                     ? null
                     : clinicalDataCacheEntry.result.categoryToColor,
-                clinicalDataCacheEntry.result.numericalValueToColor,
+                numericalValueToColorOverride ||
+                    clinicalDataCacheEntry.result.numericalValueToColor,
                 isPatientAttribute
             );
             patientColorMap = maps.patientColorMap;
@@ -719,7 +723,7 @@ function transformSampleEmbedding(
     mutationTypeEnabled: boolean = true,
     copyNumberEnabled: boolean = true,
     structuralVariantEnabled: boolean = true,
-    coloringLogScale: boolean = false
+    numericalValueToColorOverride?: (x: number) => string
 ): EmbeddingPlotPoint[] {
     const allSamples = store.samples.result || [];
     const sampleLookupMap = createSampleIdLookupMap(allSamples);
@@ -775,7 +779,8 @@ function transformSampleEmbedding(
         const result = preComputeEmbeddingDataColors(
             embeddingData,
             fieldName,
-            isNumericEmbeddingField
+            isNumericEmbeddingField,
+            isNumericEmbeddingField ? numericalValueToColorOverride : undefined
         );
         embeddingDataColorMap = result.colorMap;
         embeddingDataValueMap = result.valueMap;
@@ -814,7 +819,8 @@ function transformSampleEmbedding(
                 isNumericClinicalAttribute
                     ? null
                     : clinicalDataCacheEntry.result.categoryToColor,
-                clinicalDataCacheEntry.result.numericalValueToColor,
+                numericalValueToColorOverride ||
+                    clinicalDataCacheEntry.result.numericalValueToColor,
                 isPatientAttribute
             );
             clinicalDataColorMap = maps.colorMap;

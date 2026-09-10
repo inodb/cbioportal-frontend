@@ -28,7 +28,14 @@ import {
     EmbeddingDataOption,
 } from 'shared/components/embeddings';
 import { EmbeddingControlStack } from 'shared/components/embeddings/controls/EmbeddingControlStack';
-import { Gene } from 'cbioportal-ts-api-client';
+import {
+    GradientOverride,
+    makeGradientColorFn,
+    getGradientStops,
+    seedLowHighColors,
+    pickPercentileRange,
+} from 'shared/components/embeddings/controls/GradientRangeEditor';
+import { Gene, ClinicalData } from 'cbioportal-ts-api-client';
 import { addCancerStudyAttribute } from 'shared/lib/ClinicalAttributeUtils';
 
 import {
@@ -107,7 +114,13 @@ export class EmbeddingsPanel extends React.Component<
     // their own parent attribute, and MobX's deep enhancer would try to
     // traverse that cycle.
     @observable.ref private selectedColoringOption?: ColoringMenuOmnibarOption;
-    @observable private coloringLogScale = false;
+    // undefined means "use the auto-computed range and colors".
+    @observable.ref private gradientOverride: GradientOverride | undefined;
+    // The ruler the gradient bar/handles/histogram are drawn against -
+    // undefined means the full data range. Clipping rebases this to the
+    // clipped window so the handles get full drag precision within it,
+    // instead of staying squeezed into a sliver of the full range.
+    @observable.ref private viewRange: [number, number] | undefined;
     @observable private mutationTypeEnabled = true;
     @observable private copyNumberEnabled = true;
     @observable private structuralVariantEnabled = true;
@@ -900,11 +913,6 @@ export class EmbeddingsPanel extends React.Component<
         this.selectedColoringOption = option;
     }
 
-    @computed get logScalePossible(): boolean {
-        // Log scale not needed for UMAP coordinates
-        return false;
-    }
-
     @computed get plotHeight(): number {
         const viewportHeight = this.windowHeight;
         const bottomPadding = 90;
@@ -1122,7 +1130,9 @@ export class EmbeddingsPanel extends React.Component<
             this.mutationTypeEnabled,
             this.copyNumberEnabled,
             this.structuralVariantEnabled,
-            this.coloringLogScale
+            this.gradientOverride
+                ? this.effectiveNumericalValueToColor
+                : undefined
         );
     }
 
@@ -1423,17 +1433,108 @@ export class EmbeddingsPanel extends React.Component<
                 clinicalDataCacheEntry.isComplete &&
                 clinicalDataCacheEntry.result
             ) {
-                if (
-                    this.coloringLogScale &&
-                    clinicalDataCacheEntry.result.logScaleNumericalValueToColor
-                ) {
-                    return clinicalDataCacheEntry.result
-                        .logScaleNumericalValueToColor;
-                }
                 return clinicalDataCacheEntry.result.numericalValueToColor;
             }
         }
         return undefined;
+    }
+
+    private static readonly HISTOGRAM_BIN_COUNT = 24;
+
+    // Raw values for the current numeric coloring attribute - the basis for
+    // both the histogram and percentile-based clipping.
+    @computed get numericalRawValues(): number[] | undefined {
+        if (
+            !this.selectedColoringOption?.info?.clinicalAttribute ||
+            !this.isNumericClinicalAttribute
+        ) {
+            return undefined;
+        }
+        const attrId = this.selectedColoringOption.info.clinicalAttribute
+            .clinicalAttributeId;
+        const values: number[] = [];
+
+        if (
+            attrId.startsWith(EMBEDDING_DATA_PREFIX) &&
+            this.selectedEmbedding?.data
+        ) {
+            const fieldName = attrId.substring(EMBEDDING_DATA_PREFIX.length);
+            for (const point of this.selectedEmbedding.data.data) {
+                const value = (point as any).data?.[fieldName];
+                if (typeof value === 'number' && !isNaN(value)) {
+                    values.push(value);
+                }
+            }
+            return values;
+        }
+
+        const clinicalDataCacheEntry = this.store.clinicalDataCache.get(
+            this.selectedColoringOption.info.clinicalAttribute
+        );
+        if (
+            clinicalDataCacheEntry.isComplete &&
+            clinicalDataCacheEntry.result
+        ) {
+            for (const d of clinicalDataCacheEntry.result
+                .data as ClinicalData[]) {
+                const value = parseFloat(d.value);
+                if (!isNaN(value)) {
+                    values.push(value);
+                }
+            }
+            return values;
+        }
+
+        return undefined;
+    }
+
+    // Bins over the same ruler the bar/handles use (viewRange), not the
+    // override's own min/max - so the histogram only rescales when a clip
+    // action rebases the ruler, and stays put while just dragging the
+    // handles to adjust colors within the current window.
+    @computed get numericalHistogramBins(): number[] | undefined {
+        const values = this.numericalRawValues;
+        const range = this.viewRange ?? this.numericalValueRange;
+        if (!values || !range) {
+            return undefined;
+        }
+        const [min, max] = range;
+        const span = max - min || 1;
+        const binCount = EmbeddingsPanel.HISTOGRAM_BIN_COUNT;
+        const bins = new Array(binCount).fill(0);
+        for (const value of values) {
+            const idx = Math.max(
+                0,
+                Math.min(
+                    binCount - 1,
+                    Math.floor(((value - min) / span) * binCount)
+                )
+            );
+            bins[idx]++;
+        }
+        return bins;
+    }
+
+    @computed get effectiveNumericalValueRange(): [number, number] | undefined {
+        if (this.gradientOverride) {
+            return [this.gradientOverride.min, this.gradientOverride.max];
+        }
+        return this.numericalValueRange;
+    }
+
+    @computed get effectiveNumericalValueToColor():
+        | ((x: number) => string)
+        | undefined {
+        const override = this.gradientOverride;
+        if (override) {
+            return makeGradientColorFn(
+                override.min,
+                override.mid,
+                override.max,
+                getGradientStops(override)
+            );
+        }
+        return this.numericalValueToColor;
     }
 
     @computed get visibleSampleCount(): number {
@@ -1561,7 +1662,20 @@ export class EmbeddingsPanel extends React.Component<
     @action.bound
     private onColoringSelectionChange(option?: ColoringMenuOmnibarOption) {
         this.selectedColoringOption = option;
+        this.gradientOverride = undefined;
+        this.viewRange = undefined;
         this.syncColoringSelectionToURL(option);
+    }
+
+    @action.bound
+    private onGradientOverrideChange(override: GradientOverride) {
+        this.gradientOverride = override;
+    }
+
+    @action.bound
+    private onGradientOverrideReset() {
+        this.gradientOverride = undefined;
+        this.viewRange = undefined;
     }
 
     private syncColoringSelectionToURL(option?: ColoringMenuOmnibarOption) {
@@ -1630,8 +1744,39 @@ export class EmbeddingsPanel extends React.Component<
     }
 
     @action.bound
-    private onLogScaleChange(enabled: boolean) {
-        this.coloringLogScale = enabled;
+    private onClipToPercentile(lowPercentile: number, highPercentile: number) {
+        const values = this.numericalRawValues;
+        const autoRange = this.numericalValueRange;
+        if (!values || values.length === 0 || !autoRange) {
+            return;
+        }
+        const range = pickPercentileRange(
+            values,
+            lowPercentile,
+            highPercentile
+        );
+        if (!range) {
+            return;
+        }
+        const [min, max] = range;
+        const { lowColor, highColor } = seedLowHighColors(
+            this.gradientOverride,
+            this.numericalValueToColor,
+            autoRange[0],
+            autoRange[1]
+        );
+        this.gradientOverride = {
+            min,
+            max,
+            mid: (min + max) / 2,
+            lowColor,
+            highColor,
+            scaleName: this.gradientOverride?.scaleName,
+        };
+        // Rebase the ruler to the clipped window so the handles get full
+        // drag precision within it, instead of staying squeezed into a
+        // sliver of the full range.
+        this.viewRange = [min, max];
     }
 
     @action.bound
@@ -1925,8 +2070,14 @@ export class EmbeddingsPanel extends React.Component<
             visibleCategoryCount: this.visibleCategoryCount,
             totalCategoryCount: this.totalCategoryCount,
             isNumericAttribute: this.isNumericClinicalAttribute,
-            numericalValueRange: this.numericalValueRange,
-            numericalValueToColor: this.numericalValueToColor,
+            numericalValueRange: this.effectiveNumericalValueRange,
+            numericalValueToColor: this.effectiveNumericalValueToColor,
+            autoNumericalValueRange: this.viewRange ?? this.numericalValueRange,
+            numericalHistogramBins: this.numericalHistogramBins,
+            gradientOverride: this.gradientOverride,
+            onGradientOverrideChange: this.onGradientOverrideChange,
+            onGradientOverrideReset: this.onGradientOverrideReset,
+            onClipToPercentile: this.onClipToPercentile,
             pinnedPoint: this.pinnedPoint,
             onPinPoint: this.pinPoint,
             onUnpinPoint: this.unpinPoint,
@@ -1955,8 +2106,6 @@ export class EmbeddingsPanel extends React.Component<
                     clinicalAttributes={this.clinicalAttributes}
                     additionalGroups={this.embeddingDataGroups}
                     selectedColoringOption={this.effectiveColoringOption}
-                    logScale={this.coloringLogScale}
-                    logScalePossible={this.logScalePossible}
                     isLoading={this.isLoading}
                     mutationDataExists={this.mutationDataExists}
                     cnaDataExists={this.cnaDataExists}
@@ -1965,7 +2114,6 @@ export class EmbeddingsPanel extends React.Component<
                     copyNumberEnabled={this.copyNumberEnabled}
                     structuralVariantEnabled={this.structuralVariantEnabled}
                     onColoringSelectionChange={this.onColoringSelectionChange}
-                    onLogScaleChange={this.onLogScaleChange}
                     onMutationTypeToggle={this.onMutationTypeToggle}
                     onCopyNumberToggle={this.onCopyNumberToggle}
                     onStructuralVariantToggle={this.onStructuralVariantToggle}

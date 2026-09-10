@@ -2,6 +2,8 @@
  * Common types and interfaces for embedding visualizations
  */
 
+import { GradientOverride } from './controls/GradientRangeEditor';
+
 interface BaseEmbeddingData {
     studyIds: string[];
     title: string;
@@ -99,8 +101,22 @@ export interface EmbeddingVisualizationProps {
     // Colored border cue when a cross-panel sample filter is active.
     isFilterActive?: boolean;
     isNumericAttribute?: boolean;
+    // Effective range/color (reflects the user's gradient override, if set).
     numericalValueRange?: [number, number];
     numericalValueToColor?: (x: number) => string;
+    // Auto-computed range, used as the gradient editor's reset target and
+    // its defaults the first time it's opened for an attribute.
+    autoNumericalValueRange?: [number, number];
+    // Bin counts across autoNumericalValueRange, for the histogram drawn
+    // under the gradient bar.
+    numericalHistogramBins?: number[];
+    gradientOverride?: GradientOverride;
+    onGradientOverrideChange?: (override: GradientOverride) => void;
+    onGradientOverrideReset?: () => void;
+    onClipToPercentile?: (
+        lowPercentile: number,
+        highPercentile: number
+    ) => void;
     pinnedPoint?: EmbeddingPoint | null;
     onPinPoint?: (point: EmbeddingPoint) => void;
     onUnpinPoint?: () => void;

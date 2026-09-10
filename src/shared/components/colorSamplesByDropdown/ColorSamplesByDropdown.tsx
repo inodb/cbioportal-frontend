@@ -21,11 +21,9 @@ export interface ColorSamplesByDropdownProps {
 
     // Current selection
     selectedOption?: ColoringMenuOmnibarOption;
-    logScale: boolean;
 
     // Configuration
     hasNoQueriedGenes: boolean;
-    logScalePossible: boolean;
     isLoading: boolean;
 
     // Gene-based coloring options (like PlotsTab)
@@ -38,7 +36,6 @@ export interface ColorSamplesByDropdownProps {
 
     // Event handlers
     onSelectionChange: (option: ColoringMenuOmnibarOption | undefined) => void;
-    onLogScaleChange: (enabled: boolean) => void;
     onMutationTypeToggle?: (enabled: boolean) => void;
     onCopyNumberToggle?: (enabled: boolean) => void;
     onStructuralVariantToggle?: (enabled: boolean) => void;
@@ -169,11 +166,6 @@ export class ColorSamplesByDropdown extends React.Component<
         selectedOption: ColoringMenuOmnibarOption | null
     ) {
         this.props.onSelectionChange(selectedOption || undefined);
-    }
-
-    @action.bound
-    private handleLogScaleChange() {
-        this.props.onLogScaleChange(!this.props.logScale);
     }
 
     @action.bound
@@ -380,18 +372,6 @@ export class ColorSamplesByDropdown extends React.Component<
                         </If>
                     </div>
                 </div>
-                {this.props.logScalePossible && (
-                    <LabeledCheckbox
-                        checked={this.props.logScale}
-                        onChange={this.handleLogScaleChange}
-                        inputProps={{
-                            style: { marginTop: 4 },
-                            className: 'coloringLogScale',
-                        }}
-                    >
-                        Log Scale
-                    </LabeledCheckbox>
-                )}
                 {/* Gene-based coloring checkboxes (like PlotsTab) */}
                 {this.isGeneSelected && (
                     <div
