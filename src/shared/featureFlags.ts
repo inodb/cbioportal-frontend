@@ -80,6 +80,7 @@ export const FEATURE_FLAG_METADATA: {
         userOptIn: true,
         exampleUrl:
             '/study?id=msk_target_test&featureFlags=geneSpecificViolinPlot',
+        portals: ['mskcc-portal'],
     },
     [FeatureFlagEnum.EMBEDDINGS]: {
         title: 'Embeddings',

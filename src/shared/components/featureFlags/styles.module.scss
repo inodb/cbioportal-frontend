@@ -37,7 +37,7 @@
 
 .selected {
     background: #eef4fb;
-    font-weight: bold;
+    box-shadow: inset 3px 0 0 #2c5987;
 
     &:hover {
         background: #eef4fb;
