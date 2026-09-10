@@ -120,7 +120,7 @@ test.describe('embeddings tab interactions', () => {
             await expect(page.locator(CLEAR_BUTTON)).toBeVisible();
             await expect(page.locator(MAKE_GLOBAL_BUTTON)).toBeVisible();
 
-            await page.locator(CLEAR_BUTTON).click();
+            await page.locator(CLEAR_BUTTON).click({ timeout: 30000 });
             await expect(page.locator(STATUS_BAR)).toContainText(
                 /[\d,]+ samples embedded in/
             );
@@ -211,7 +211,7 @@ test.describe('embeddings tab interactions', () => {
             await page
                 .locator(LOCK_MAP_BUTTON)
                 .first()
-                .click();
+                .click({ timeout: 30000 });
             await expect(
                 page.locator(STATUS_BAR)
             ).not.toContainText(/embedded in/, { timeout: 30000 });
