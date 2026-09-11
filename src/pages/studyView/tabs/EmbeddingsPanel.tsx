@@ -70,6 +70,7 @@ export interface IEmbeddingsPanelProps {
         embeddingDescription: string;
         embeddingType: 'patients' | 'samples';
         cohortCount: number;
+        isLoading: boolean;
     }) => void;
     clearFilterRequestId: number;
     // Plain mutable holder, not a reactive prop - see EmbeddingsTab's
@@ -332,6 +333,7 @@ export class EmbeddingsPanel extends React.Component<
                         this.selectedEmbedding?.data.description || '',
                     embeddingType: embeddingType as 'patients' | 'samples',
                     cohortCount,
+                    isLoading: this.isLoading,
                 };
             },
             info => {

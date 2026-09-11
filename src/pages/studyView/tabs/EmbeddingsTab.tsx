@@ -89,6 +89,8 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     @observable private reportedEmbeddingType: 'patients' | 'samples' =
         'samples';
     @observable private reportedCohortCount = 0;
+    // Starts true so the counts sentence doesn't flash misleading zeros before the first real report.
+    @observable private reportedIsLoading = true;
 
     // So the status bar's "Make Global" button can call panel 1's
     // applyFilterGlobally() directly.
@@ -206,6 +208,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         embeddingDescription: string;
         embeddingType: 'patients' | 'samples';
         cohortCount: number;
+        isLoading: boolean;
     }) {
         this.reportedTotalSampleCount = info.total;
         this.reportedVisibleSampleCount = info.visible;
@@ -213,6 +216,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         this.reportedEmbeddingDescription = info.embeddingDescription;
         this.reportedEmbeddingType = info.embeddingType;
         this.reportedCohortCount = info.cohortCount;
+        this.reportedIsLoading = info.isLoading;
     }
 
     @computed private get unitLabel(): string {
@@ -515,7 +519,8 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} visible
                                 </>
-                            ) : this.panelCount === 1 || this.sharedLockMap ? (
+                            ) : (this.panelCount === 1 || this.sharedLockMap) &&
+                              !this.reportedIsLoading ? (
                                 <>
                                     {this.reportedTotalSampleCount.toLocaleString()}{' '}
                                     {this.unitLabel} embedded in{' '}
@@ -552,7 +557,8 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                             ) : null}
                         </span>
                         {!isFilterActive &&
-                            (this.panelCount === 1 || this.sharedLockMap) && (
+                            (this.panelCount === 1 || this.sharedLockMap) &&
+                            !this.reportedIsLoading && (
                                 <DefaultTooltip
                                     placement="bottom"
                                     overlay={
