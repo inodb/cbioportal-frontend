@@ -540,9 +540,14 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
                                             styles={MAP_SELECT_STYLES}
                                         />
                                     ) : null}{' '}
-                                    (constructed using{' '}
-                                    {this.reportedEmbeddingSampleSize.toLocaleString()}{' '}
-                                    {this.unitLabel})
+                                    {this.reportedEmbeddingSampleSize !==
+                                        this.reportedTotalSampleCount && (
+                                        <>
+                                            (constructed using{' '}
+                                            {this.reportedEmbeddingSampleSize.toLocaleString()}{' '}
+                                            {this.unitLabel})
+                                        </>
+                                    )}
                                 </>
                             ) : null}
                         </span>
