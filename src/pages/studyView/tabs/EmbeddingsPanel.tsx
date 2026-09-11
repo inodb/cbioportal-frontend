@@ -27,6 +27,7 @@ import {
     EmbeddingDeckGLVisualization,
     EmbeddingDataOption,
 } from 'shared/components/embeddings';
+import { boehmHeData } from 'shared/components/embeddings/EmbeddingDataSource';
 import { EmbeddingControlStack } from 'shared/components/embeddings/controls/EmbeddingControlStack';
 import {
     GradientOverride,
@@ -39,7 +40,6 @@ import { Gene, ClinicalData } from 'cbioportal-ts-api-client';
 import { addCancerStudyAttribute } from 'shared/lib/ClinicalAttributeUtils';
 
 import {
-    EmbeddingData,
     ViewState,
     EmbeddingPoint,
 } from 'shared/components/embeddings/EmbeddingTypes';
@@ -86,21 +86,6 @@ export interface IEmbeddingsPanelProps {
     onSharedMapChange: (value: string) => void;
     onSetPanelCount: (target: number) => void;
 }
-
-const EMBEDDING_BASE_URL =
-    'https://datahub.assets.cbioportal.org/embeddings/msk_mosaic_2026';
-
-// Module-level singleton so every panel shares one fetch.
-const boehmHeData = remoteData<EmbeddingData>({
-    await: () => [],
-    invoke: async () => {
-        const response = await fetch(`${EMBEDDING_BASE_URL}/umap_he_50k.json`);
-        if (!response.ok) {
-            throw new Error('Failed to load H&E embedding data');
-        }
-        return response.json();
-    },
-});
 
 @observer
 export class EmbeddingsPanel extends React.Component<

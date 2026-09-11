@@ -17,7 +17,7 @@ import {
 import LoadingIndicator from 'shared/components/loadingIndicator/LoadingIndicator';
 import { ClinicalDataTab } from './tabs/ClinicalDataTab';
 import { EmbeddingsTab } from './tabs/EmbeddingsTab';
-import { EmbeddingData } from 'shared/components/embeddings/EmbeddingTypes';
+import { boehmHeData } from 'shared/components/embeddings/EmbeddingDataSource';
 import {
     DefaultTooltip,
     getBrowserWindow,
@@ -456,9 +456,13 @@ export default class StudyViewPage extends React.Component<
             return false;
         }
 
-        // Embeddings tab itself will handle checking if the remote data
-        // supports the current studies, so we just enable the tab here
-        return true;
+        // Hide entirely (like CN_SEGMENTS) until a map covering a queried study is confirmed to exist.
+        if (boehmHeData.isPending || !boehmHeData.result) {
+            return false;
+        }
+        return this.store.queriedPhysicalStudyIds.result.some(studyId =>
+            boehmHeData.result!.studyIds.includes(studyId)
+        );
     }
 
     @computed get isLoading() {
