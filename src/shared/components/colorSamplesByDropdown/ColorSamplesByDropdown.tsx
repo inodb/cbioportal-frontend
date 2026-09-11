@@ -46,9 +46,7 @@ export interface ColorSamplesByDropdownProps {
     // Omits the built-in "Color by:" label - for callers (e.g. one with its
     // own caption above) that would otherwise show it twice.
     hideLabel?: boolean;
-    // Stacks the select and the log-scale/gene checkboxes vertically
-    // instead of laying them out in one inline row - for callers with a
-    // narrow, fixed-width column where the inline row would overflow.
+    // Stacks the select and gene checkboxes vertically, for callers with a narrow column where an inline row would overflow.
     stacked?: boolean;
 
     // Optional styling

@@ -146,9 +146,7 @@ describe('GradientRangeEditor', () => {
         });
 
         it('places the midpoint color at the mid pivot regardless of where it sits in [min, max]', () => {
-            // A skewed pivot (mid much closer to max) should still map to
-            // the 50%-through-the-stops color at x === mid - this is the
-            // gamma-style skew the mid handle is for.
+            // A skewed pivot should still map to the 50%-through-the-stops color at x === mid.
             const colorFn = makeGradientColorFn(0, 9, 10, stops);
             assert.equal(colorFn(9), 'rgb(128, 128, 128)');
         });

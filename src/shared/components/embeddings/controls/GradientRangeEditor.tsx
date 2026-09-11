@@ -101,8 +101,7 @@ function rgbCss([r, g, b]: RGB): string {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-// Normalizes a CSS color (e.g. d3's "rgb(255, 245, 240)") to hex, since
-// GradientOverride's lowColor/highColor are always hex.
+// Normalizes a CSS color (e.g. d3's "rgb(...)") to hex, since GradientOverride's colors are always hex.
 function cssColorToHex(css: string): string {
     if (css.startsWith('#')) return css;
     const match = css.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
@@ -114,10 +113,7 @@ function cssColorToHex(css: string): string {
     return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
 }
 
-// The low/high colors a new override should start from - the existing
-// override's colors when one is already active, otherwise sampled from
-// whatever's actually being shown (the auto scheme), so creating an
-// override by just dragging a handle doesn't silently switch schemes.
+// Reuses the existing override's colors, or samples the auto scheme, so dragging a handle doesn't silently switch schemes.
 export function seedLowHighColors(
     override: GradientOverride | undefined,
     autoColorFn: ((x: number) => string) | undefined,
@@ -134,9 +130,7 @@ export function seedLowHighColors(
     };
 }
 
-// The [min, max] window for a percentile clip, picked from the sorted raw
-// values - e.g. (5, 95) discards the bottom/top 5% as outliers. Returns
-// undefined when there aren't enough distinct values to form a real window.
+// The [min, max] window for a percentile clip (e.g. (5, 95) discards the bottom/top 5%); undefined if it collapses.
 export function pickPercentileRange(
     values: number[],
     lowPercentile: number,
@@ -178,10 +172,7 @@ export function gradientCssFromStops(stops: RGB[]): string {
     return `linear-gradient(to right, ${css})`;
 }
 
-// Preview of whatever the auto (no-override) coloring actually looks like,
-// sampled directly from its color function rather than assumed - the auto
-// scheme isn't necessarily a simple 2-color gradient (e.g. today it's
-// d3's interpolateReds).
+// Preview of the auto (no-override) coloring, sampled from its color function since it isn't necessarily a simple 2-color gradient.
 export function gradientCssFromColorFn(
     colorFn: (x: number) => string,
     min: number,
@@ -301,9 +292,7 @@ export const GradientBarHandles: React.FC<GradientBarHandlesProps> = ({
         return autoMin + t * autoRange;
     };
 
-    // A full-plot recolor is too expensive to run on every pointermove, so
-    // wait for a short pause in movement before committing (always flushed
-    // immediately on release).
+    // Debounce commits during drag - a full-plot recolor is too expensive on every pointermove.
     const COMMIT_DEBOUNCE_MS = 150;
     const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingRef = React.useRef<RangeValues | null>(null);
@@ -311,8 +300,7 @@ export const GradientBarHandles: React.FC<GradientBarHandlesProps> = ({
     const commitNow = React.useCallback((next: RangeValues) => {
         pendingRef.current = null;
         onChangeRef.current(next);
-        // Give the resulting re-render a couple of frames to paint before
-        // clearing the busy indicator.
+        // Let the re-render paint before clearing the busy indicator.
         requestAnimationFrame(() =>
             requestAnimationFrame(() => setIsBusy(false))
         );
@@ -488,8 +476,7 @@ export interface GradientRangeEditorProps {
     onChange: (override: GradientOverride) => void;
     onReset: () => void;
     onClipToPercentile: (lowPercentile: number, highPercentile: number) => void;
-    // The color function actually shown when no override is active, so the
-    // seed colors for customizing match it exactly.
+    // Shown when no override is active, so seed colors for customizing match it exactly.
     autoColorFn?: (x: number) => string;
     // The draggable bar + histogram, rendered at the top of the popover.
     children?: React.ReactNode;

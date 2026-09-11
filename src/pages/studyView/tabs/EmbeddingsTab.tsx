@@ -51,22 +51,14 @@ function mapParamName(panelIndex: number): string {
 // Shared across all panels - a single URL param, not a per-panel slot.
 const TOOLTIP_FIELDS_PARAM = 'embeddings_tooltip_fields';
 
-// Splits the embeddings tab into 1-4 independent, side-by-side panels, each
-// its own EmbeddingsPanel with its own map/color-by/tooltip-fields state,
-// synced to its own fixed-slot URL params (see coloringParamName et al.).
+// Splits the tab into 1-4 independent panels, each with its own map/color-by/tooltip state synced to its own URL params.
 @observer
 export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     @observable private panelCount: number = 1;
     @observable private sharedSelectionMode: 'none' | 'lasso' = 'none';
     @observable.ref private sharedTooltipFields = new Set<string>();
     @observable private sharedHiddenQcCategories = new Set<string>();
-    // Union of every panel's own hidden sample/patient keys (see
-    // EmbeddingsPanel.ownHiddenSampleKeys), so hiding a category in one
-    // panel filters the same underlying samples in every panel, even one
-    // colored by a completely different, non-overlapping attribute.
-    // @observable.shallow: a contribution can hold tens of thousands of
-    // keys, and the default deep enhancer instrumenting every string in
-    // every Set was catastrophically slow.
+    // Union of every panel's own hidden keys; .shallow since a contribution can hold tens of thousands of them.
     @observable.shallow private hiddenSampleKeysByPanel = new Map<
         number,
         Set<string>
@@ -79,9 +71,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
         });
         return result;
     }
-    // Plain mutable holder, not observable: the primary panel writes to it
-    // every pan/zoom frame, and locked panels poll it via rAF instead of
-    // receiving pushed updates, so panning never forces a re-render.
+    // Plain mutable holder, not observable: locked panels poll it via rAF instead of pushed updates, so panning never re-renders.
     private readonly primaryViewStateHolder: { current: ViewState | null } = {
         current: null,
     };
@@ -91,9 +81,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
     @observable private sharedLockMap = true;
     @observable private sharedMapValue: string | undefined;
 
-    // Reported by whichever panel last fired its reaction - they should
-    // all agree, since visibleSampleCount reflects the same shared
-    // hiddenSampleKeys. Drives the status bar and its explainer tooltip.
+    // Reported by whichever panel last fired its reaction; drives the status bar and its explainer tooltip.
     @observable private reportedTotalSampleCount = 0;
     @observable private reportedVisibleSampleCount = 0;
     @observable private reportedEmbeddingSampleSize = 0;
@@ -193,9 +181,7 @@ export class EmbeddingsTab extends React.Component<IEmbeddingsTabProps, {}> {
 
     @action.bound
     private onSetPanelHiddenSampleKeys(panelIndex: number, keys: Set<string>) {
-        // Content-equality check, not just reference: the panel's computed
-        // can rebuild an identical-but-new Set, and writing that
-        // unconditionally would trigger a self-sustaining re-render loop.
+        // Content-equality check: the panel's computed can rebuild an identical-but-new Set, risking a self-sustaining loop.
         const existing = this.hiddenSampleKeysByPanel.get(panelIndex);
         if (existing && existing.size === keys.size) {
             let identical = true;

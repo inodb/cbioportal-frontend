@@ -130,10 +130,7 @@ export interface EmbeddingVisualizationProps {
     // supplied. Omit to keep the mode purely local to this instance.
     selectionMode?: 'none' | 'lasso';
     onSelectionModeChange?: (mode: 'none' | 'lasso') => void;
-    // Lets the parent supply the top-left control cluster's markup while
-    // export/pan-select mechanics stay owned by
-    // EmbeddingDeckGLVisualization. Falls back to the default
-    // ToolbarControls/SelectionControls when omitted.
+    // Lets the parent supply the control cluster's markup; falls back to the default ToolbarControls/SelectionControls.
     renderControls?: (childControls: {
         onExport: () => void;
         selectionMode: 'none' | 'lasso';

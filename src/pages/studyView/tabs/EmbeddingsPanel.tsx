@@ -60,10 +60,7 @@ export interface IEmbeddingsPanelProps {
     onTooltipFieldsChange: (fields: Set<string>) => void;
     hiddenQcCategories: Set<string>;
     onToggleQcCategoryVisibility: (category: string) => void;
-    // Cross-panel sample-identity filter (see ownHiddenSampleKeys) - this
-    // panel keeps its own category-toggle state locally purely to drive
-    // its own legend UI, and contributes to this via
-    // onSetPanelHiddenSampleKeys.
+    // Cross-panel sample-identity filter; this panel contributes to it via onSetPanelHiddenSampleKeys.
     hiddenSampleKeys: Set<string>;
     onSetPanelHiddenSampleKeys: (keys: Set<string>) => void;
     onReportSampleCounts?: (info: {
@@ -110,16 +107,11 @@ export class EmbeddingsPanel extends React.Component<
     IEmbeddingsPanelProps,
     {}
 > {
-    // .ref, not deep: custom attributes' 'data' can reference back to
-    // their own parent attribute, and MobX's deep enhancer would try to
-    // traverse that cycle.
+    // .ref, not deep: custom attributes' 'data' can reference back to their own parent, which a deep enhancer would loop on.
     @observable.ref private selectedColoringOption?: ColoringMenuOmnibarOption;
     // undefined means "use the auto-computed range and colors".
     @observable.ref private gradientOverride: GradientOverride | undefined;
-    // The ruler the gradient bar/handles/histogram are drawn against -
-    // undefined means the full data range. Clipping rebases this to the
-    // clipped window so the handles get full drag precision within it,
-    // instead of staying squeezed into a sliver of the full range.
+    // The ruler the gradient bar/handles/histogram are drawn against; undefined means the full data range.
     @observable.ref private viewRange: [number, number] | undefined;
     @observable private mutationTypeEnabled = true;
     @observable private copyNumberEnabled = true;
@@ -149,16 +141,9 @@ export class EmbeddingsPanel extends React.Component<
     private sampleCountsReportReactionDisposer?: () => void;
     private viewStateInitialized = false;
     private centerViewTimeoutId?: ReturnType<typeof setTimeout>;
-    // mobx-react's @observer makes `this.props` reactive as one unit, so
-    // any @computed reading `this.props.X` gets invalidated by ANY prop
-    // change, not just X - e.g. Pan/Select toggling was cascading into a
-    // full plot data rebuild. `store` never changes, so cache it as a
-    // plain field instead of reading it through props.
+    // @observer makes `this.props` reactive as one unit, so any prop change was invalidating every computed; cache the never-changing store.
     private readonly store = this.props.store;
-    // hiddenSampleKeys/hiddenQcCategories/tooltipFields DO need to stay
-    // reactive, so mirror them into their own observables, written only
-    // in componentDidUpdate (via React's prevProps, not mobx-react's
-    // reactive props) when the prop reference actually changes.
+    // These DO need to stay reactive, so mirror them into their own observables, updated in componentDidUpdate.
     @observable.ref private hiddenSampleKeysMirror = this.props
         .hiddenSampleKeys;
     @observable.ref private hiddenQcCategoriesMirror = this.props
@@ -209,10 +194,7 @@ export class EmbeddingsPanel extends React.Component<
 
         this.handleResize = this.handleResize.bind(this);
 
-        // Debounced: plotData can change reference several times in quick
-        // succession right after mount, and each firing would otherwise
-        // queue its own centerView() before the first has a chance to
-        // flip viewStateInitialized.
+        // Debounced: plotData can change reference several times right after mount, each queueing its own centerView().
         this.viewStateReactionDisposer = reaction(
             () => this.plotData,
             plotData => {
@@ -318,9 +300,7 @@ export class EmbeddingsPanel extends React.Component<
             }
         );
 
-        // Deferred via setTimeout: pushing synchronously during the same
-        // render/reaction flush that reads the wrapper's shared union can
-        // cascade into "Maximum update depth exceeded".
+        // Deferred via setTimeout: a synchronous push during this same reaction flush cascades into "Maximum update depth exceeded".
         this.hiddenSampleKeysReactionDisposer = reaction(
             () => this.ownHiddenSampleKeys,
             keys => {
@@ -359,10 +339,7 @@ export class EmbeddingsPanel extends React.Component<
                     this.props.onReportSampleCounts(info);
                 }
             },
-            // Structural equality: the tracking function returns a fresh
-            // object every time, so default reference equality would
-            // re-fire the effect on every recompute even when nothing
-            // changed - a risk of a self-sustaining render loop.
+            // Structural equality: the tracking function returns a fresh object each time, risking a self-sustaining loop.
             { fireImmediately: true, equals: comparer.structural }
         );
     }
@@ -421,10 +398,7 @@ export class EmbeddingsPanel extends React.Component<
         this.lassoSelectedKeys = null;
     }
 
-    // Polls the shared viewState holder rather than receiving it as a
-    // reactive prop, since it's a plain mutable object any panel can
-    // write to every pan/zoom frame - this is how a panel picks up a
-    // change another panel made.
+    // Polls the shared viewState holder (a plain mutable object any panel writes to) rather than a reactive prop.
     private lockPollRafId?: number;
 
     private startLockPolling() {
@@ -600,11 +574,7 @@ export class EmbeddingsPanel extends React.Component<
             return new Map();
         }
 
-        // Sample-level embeddings render one point per sample, keyed by
-        // uniqueSampleKey (see makeEmbeddingScatterPlotData/TooltipDisplay) -
-        // a patient-aggregated map would be wrong/blank for sample-only
-        // attributes and inconsistent with how every other point lookup in
-        // this panel keys sample embeddings.
+        // Keyed by uniqueSampleKey like every other sample-embedding lookup, not patientId (which would be wrong for sample-only attributes).
         if (this.selectedEmbedding?.data.embedding_type === 'samples') {
             const sampleValueMap = new Map<string, string>();
             cacheEntry.result.data.forEach(d => {
@@ -644,9 +614,7 @@ export class EmbeddingsPanel extends React.Component<
             .sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    // Fields embedded directly in the current embedding's data payload
-    // (e.g. "Data Partition (Split)") - same "Map Attributes" group offered
-    // in the coloring dropdown.
+    // Fields embedded directly in the current embedding's data (e.g. "Data Partition (Split)") - the "Map Attributes" group.
     @computed get tooltipMapAttributeOptions(): {
         value: string;
         label: string;
@@ -776,10 +744,7 @@ export class EmbeddingsPanel extends React.Component<
         const driversAnnotated = driverSettings?.driversAnnotated || false;
         const plotsTabStore = this.store.plotsTabStore;
 
-        // Mirror molecularDataForColoring's readiness gating: reading the
-        // mutation cache before OncoKB/Hotspots annotations are loaded lets
-        // putativeDriver get cached as false prematurely, so every mutation
-        // then looks like a VUS forever.
+        // Gate on annotation readiness like molecularDataForColoring - reading the cache too early caches putativeDriver as false forever.
         if (driversAnnotated && driverSettings) {
             if (
                 driverSettings.oncoKb &&
@@ -1019,9 +984,7 @@ export class EmbeddingsPanel extends React.Component<
                 const queries = [{ entrezGeneId }];
                 const driverAnnotationsReady = this.driverAnnotationsEnabled;
 
-                // Wait for OncoKB/Hotspots before the mutation cache, since
-                // annotatedMutationCache depends on getMutationPutativeDriverInfo
-                // and would otherwise use stale driver annotations.
+                // Wait for OncoKB/Hotspots first, or annotatedMutationCache uses stale driver annotations.
                 if (
                     driverAnnotationsReady &&
                     this.store.driverAnnotationSettings
@@ -1088,10 +1051,7 @@ export class EmbeddingsPanel extends React.Component<
             this.selectedColoringOption?.info?.entrezGeneId &&
             this.selectedColoringOption.info.entrezGeneId !== -3;
 
-        // Only depend on the store-level driverAnnotationSettings when
-        // this panel's own coloring is gene-based, or every panel's
-        // rawPlotData would recompute whenever any OTHER panel's gene
-        // selection flips it.
+        // Only depend on driverAnnotationSettings when coloring by gene, or every panel recomputes on any other panel's gene toggle.
         if (isColoringByGene) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const _ = this.driverAnnotationsEnabled;
@@ -1136,11 +1096,7 @@ export class EmbeddingsPanel extends React.Component<
         );
     }
 
-    // Sample/patient identity keys hidden by this panel's own filters -
-    // shared across panels (via the constructor's reaction) by identity
-    // rather than category name, so a differently-colored panel still
-    // filters the same samples. Combines hidden legend categories and a
-    // lasso selection (everything outside it is also hidden).
+    // Shared cross-panel by identity, not category name, so a differently-colored panel still filters the same samples.
     @computed get ownHiddenSampleKeys(): Set<string> {
         const hasCategoryFilter = this.localHiddenCategories.size > 0;
         const hasLassoFilter = this.lassoSelectedKeys !== null;
@@ -1216,9 +1172,7 @@ export class EmbeddingsPanel extends React.Component<
             return point;
         });
 
-        // hiddenSampleKeys is the cross-panel identity filter (applies
-        // regardless of this panel's own coloring); hiddenQcCategories is
-        // matched by name.
+        // hiddenSampleKeys is the cross-panel identity filter; hiddenQcCategories is matched by name.
         const filteredData = processedData.filter(point => {
             const label = point.displayLabel || '';
             const key = point.sampleId || point.patientId || '';
@@ -1441,8 +1395,7 @@ export class EmbeddingsPanel extends React.Component<
 
     private static readonly HISTOGRAM_BIN_COUNT = 24;
 
-    // Raw values for the current numeric coloring attribute - the basis for
-    // both the histogram and percentile-based clipping.
+    // Raw values for the current numeric coloring attribute - basis for the histogram and percentile clipping.
     @computed get numericalRawValues(): number[] | undefined {
         if (
             !this.selectedColoringOption?.info?.clinicalAttribute ||
@@ -1488,10 +1441,7 @@ export class EmbeddingsPanel extends React.Component<
         return undefined;
     }
 
-    // Bins over the same ruler the bar/handles use (viewRange), not the
-    // override's own min/max - so the histogram only rescales when a clip
-    // action rebases the ruler, and stays put while just dragging the
-    // handles to adjust colors within the current window.
+    // Bins over viewRange (not the override's own min/max), so the histogram only rescales on a clip, not while dragging.
     @computed get numericalHistogramBins(): number[] | undefined {
         const values = this.numericalRawValues;
         const range = this.viewRange ?? this.numericalValueRange;
@@ -1773,9 +1723,7 @@ export class EmbeddingsPanel extends React.Component<
             highColor,
             scaleName: this.gradientOverride?.scaleName,
         };
-        // Rebase the ruler to the clipped window so the handles get full
-        // drag precision within it, instead of staying squeezed into a
-        // sliver of the full range.
+        // Rebase the ruler to the clipped window so the handles get full drag precision within it.
         this.viewRange = [min, max];
     }
 
@@ -1822,10 +1770,7 @@ export class EmbeddingsPanel extends React.Component<
     @action.bound
     private setViewState(newViewState: ViewState) {
         this.viewState = newViewState;
-        // While locked, every panel (not just one designated "primary")
-        // both drives and follows the shared view - panning/zooming any
-        // one of them broadcasts to the rest via the same holder they all
-        // poll (see startLockPolling).
+        // While locked, every panel both drives and follows the shared view via the holder they all poll (see startLockPolling).
         if (this.props.isLockedToPrimary) {
             this.props.onPrimaryViewStateChange(newViewState);
         }
@@ -1914,10 +1859,7 @@ export class EmbeddingsPanel extends React.Component<
         }
     }
 
-    // Called via ref from EmbeddingsTab's "Make Global" button. Returns
-    // whether a selection was actually applied - the wrapper only resets
-    // the local filters when true, so a no-op (Hide All leaving nothing
-    // visible) doesn't discard the user's filter state for nothing.
+    // Called via ref from "Make Global". Returns whether a selection was actually applied, so a no-op doesn't discard local filters.
     @action.bound
     applyFilterGlobally(): boolean {
         if (this.plotData.length === 0 || !this.selectedEmbedding) {

@@ -5,9 +5,7 @@ type TooltipFieldOption = { value: string; label: string };
 type TooltipFieldGroup = { label: string; options: TooltipFieldOption[] };
 type TooltipFieldItem = TooltipFieldOption | TooltipFieldGroup;
 
-// Keeps the dropdown responsive when the Genes group holds every gene in
-// the genome (tens of thousands of options) rather than just a queried
-// panel - same approach as ColorSamplesByDropdown's gene search.
+// Keeps the dropdown responsive when Genes holds every gene in the genome, not just a queried panel.
 const MAX_OPTIONS_PER_GROUP = 50;
 
 export interface TooltipDropDownProps {

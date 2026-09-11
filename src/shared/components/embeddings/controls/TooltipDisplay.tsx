@@ -35,10 +35,7 @@ const clinicalAttributeValue = (
     point: EmbeddingPoint,
     valueMaps: TooltipFieldValueMaps
 ): string => {
-    // Sample-level embeddings supply a map keyed by uniqueSampleKey (see
-    // EmbeddingsPanel.getClinicalAttributeValueMap); patient-level
-    // embeddings supply one keyed by patientId, and points from those
-    // don't carry a uniqueSampleKey at all.
+    // Sample-level points are keyed by uniqueSampleKey; patient-level points carry no uniqueSampleKey, only patientId.
     const key = point.uniqueSampleKey || point.patientId || '';
     return (
         valueMaps.clinicalAttributeValueMaps
@@ -159,9 +156,7 @@ export const TooltipDisplay: React.FC<TooltipDisplayProps> = ({
     };
 
     const isSampleEmbedding = embeddingType === 'samples';
-    // Points outside the queried cohort only carry an id and position - no
-    // clinical data exists for them, so don't show fields that would imply
-    // otherwise (and drop the id that's just a copy-of-id-as-fallback).
+    // Points outside the queried cohort only carry an id and position - no clinical fields exist for them to show.
     const isOutOfCohort = hoveredPoint.isInCohort === false;
     const fixedFieldKeys = isOutOfCohort
         ? [isSampleEmbedding ? 'sampleId' : 'patientId', 'position']
@@ -188,9 +183,7 @@ export const TooltipDisplay: React.FC<TooltipDisplayProps> = ({
         }
     });
 
-    // Order dynamically selected fields by type (Clinical Attributes, then
-    // Map Attributes, then Genes) rather than by selection order, so the
-    // tooltip's field order doesn't depend on the order fields were picked.
+    // Order dynamically selected fields by type, not by selection order.
     const DYNAMIC_FIELD_PREFIX_ORDER = [
         CLINICAL_ATTRIBUTE_FIELD_PREFIX,
         MAP_ATTRIBUTE_FIELD_PREFIX,

@@ -241,10 +241,7 @@ const renderGradientLegend = (
                         (() => {
                             const maxCount = Math.max(1, ...histogramBins);
                             const barWidth = 100 / histogramBins.length;
-                            // Bins are computed over the same ruler
-                            // (autoMin/autoMax) as the bar/handles, so the
-                            // histogram only rescales when a clip action
-                            // rebases the ruler - not while just dragging.
+                            // Same ruler (autoMin/autoMax) as the bar/handles, so this only rescales on a clip, not while dragging.
                             const binSpan =
                                 (autoMax - autoMin) / histogramBins.length;
                             return (
@@ -795,8 +792,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                 >
                     {biologicalEntries.map(([displayLabel, styling]) => {
                         const count = categoryCounts?.get(displayLabel) || 0;
-                        // A fully-hidden category has no map entry, which
-                        // must read as 0, not "no filter" (undefined).
+                        // A fully-hidden category has no map entry, which must read as 0, not "no filter" (undefined).
                         const visibleCount = visibleCategoryCounts
                             ? visibleCategoryCounts.get(displayLabel) || 0
                             : undefined;
@@ -870,9 +866,7 @@ export const LegendPanel: React.FC<LegendPanelProps> = ({
                             {qcEntries.map(([displayLabel, styling]) => {
                                 const count =
                                     categoryCounts?.get(displayLabel) || 0;
-                                // A fully-hidden category has no map
-                                // entry, which must read as 0, not
-                                // "no filter" (undefined).
+                                // A fully-hidden category has no map entry, which must read as 0, not "no filter" (undefined).
                                 const visibleCount = visibleCategoryCounts
                                     ? visibleCategoryCounts.get(displayLabel) ||
                                       0

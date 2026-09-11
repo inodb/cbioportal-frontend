@@ -75,18 +75,13 @@ test.describe('embeddings tab interactions', () => {
             page,
         }) => {
             await gotoEmbeddings(page);
-            // Not getByRole('button').first(): the legend's collapse/expand
-            // chevron is also a button and sits before this one in the DOM,
-            // and clicking it collapses the panel (removing this button
-            // entirely) rather than toggling categories.
+            // Not getByRole('button').first(): the collapse/expand chevron is also a button and sits before this one.
             const toggle = page.locator(
                 '[data-test="embeddings-legend-toggle-all"]'
             );
             await expect(toggle).toBeVisible();
 
-            // Hiding/showing every category recomputes visibility for the
-            // full 50k-sample point set, which can outrun the default 15s
-            // click timeout on a loaded backend - give it more headroom.
+            // Recomputes visibility for all 50k samples, can outrun the default click timeout.
             await toggle.click({ timeout: 30000 });
             await expect(toggle).toContainText('Show All');
 
@@ -97,9 +92,7 @@ test.describe('embeddings tab interactions', () => {
         test('displays the total embedded sample count in the status bar', async ({
             page,
         }) => {
-            // Total/visible counts live in the shared status bar above the
-            // panels (see EmbeddingsTab), not in the legend itself - the
-            // legend only shows its own per-category counts.
+            // Total/visible counts live in the shared status bar, not the legend (which only shows per-category counts).
             await gotoEmbeddings(page);
             await expect(page.locator(STATUS_BAR)).toContainText(
                 /[\d,]+ samples embedded in/
@@ -135,10 +128,7 @@ test.describe('embeddings tab interactions', () => {
             await expect(firstItem).toBeVisible();
 
             await firstItem.click({ timeout: 30000 });
-            // The hidden category's own samples are filtered out of this
-            // same panel too (the filter applies by sample identity across
-            // every panel, including the one that set it), so its count
-            // drops to "0 / N".
+            // The filter applies to this same panel too, so its count drops to "0 / N".
             await expect(firstItem).toContainText(/0\s*\/\s*[\d,]+/);
         });
     });
@@ -185,10 +175,7 @@ test.describe('embeddings tab interactions', () => {
         test('hides the per-embedding status sentence once Lock Map is disabled with multiple panels open', async ({
             page,
         }) => {
-            // This test renders the full 50k-sample map TWICE (one per
-            // panel) - measured ~66s end-to-end in a clean run, so give it
-            // real headroom over the file's 120s default instead of relying
-            // on it never running slower than that.
+            // Renders the full 50k-sample map twice (one per panel); measured ~66s in a clean run.
             test.setTimeout(240000);
 
             // Single panel: the status bar reports this one panel's map and
@@ -216,9 +203,7 @@ test.describe('embeddings tab interactions', () => {
                 page.locator(STATUS_BAR)
             ).not.toContainText(/embedded in/, { timeout: 30000 });
 
-            // Switching back to a single panel restores it regardless -
-            // unmounting/remounting the 50k-sample map can take a moment
-            // longer than the default 5s assertion timeout.
+            // Switching back to a single panel restores it regardless.
             await page.locator(panelCountButton(1)).click({ timeout: 30000 });
             await expect(page.locator(VIZ)).toHaveCount(1, { timeout: 60000 });
             await expect(
@@ -229,15 +214,10 @@ test.describe('embeddings tab interactions', () => {
         test('a cross-panel selection filter is reflected in every open panel', async ({
             page,
         }) => {
-            // Renders the full 50k-sample map TWICE (one per panel), same
-            // as the Lock Map test above - give it the same real headroom
-            // over the file's 120s default.
+            // Renders the full 50k-sample map twice, same as the Lock Map test above.
             test.setTimeout(240000);
 
-            // Load directly into 2-panel mode via the panel-2 URL params
-            // (see EmbeddingsTab's constructor) rather than clicking the
-            // panel-count control - avoids racing the first panel's own
-            // render while the 50k-sample view is still settling.
+            // Load directly into 2-panel mode via URL params, avoiding a race with the panel-count button.
             await page.goto(
                 `/study/embeddings?id=${STUDY}&featureFlags=EMBEDDINGS&embeddings_panel2_map=msk_mosaic_2026_he`
             );
@@ -246,10 +226,7 @@ test.describe('embeddings tab interactions', () => {
                 timeout: 60000,
             });
 
-            // Hiding a category in panel 1's legend is a cross-panel,
-            // sample-identity filter that recomputes visibility across
-            // both panels' full 50k-sample point sets - can outrun the
-            // default click timeout on a loaded backend.
+            // Cross-panel filter recomputes visibility across both panels' 50k samples, can outrun the default click timeout.
             const firstPanelFirstItem = page.locator(LEGEND_ITEM).first();
             await expect(firstPanelFirstItem).toBeVisible();
             await firstPanelFirstItem.click({ timeout: 60000 });

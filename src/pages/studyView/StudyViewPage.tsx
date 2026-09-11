@@ -742,10 +742,7 @@ export default class StudyViewPage extends React.Component<
                                         return this.toolbarLeft;
                                     }} // dont run into other study view UI
                                     contentWindowExtra={
-                                        // Study Page Help doesn't cover the
-                                        // Similarity Maps tab. Cast through
-                                        // string: StudyViewPageTabKey
-                                        // doesn't include EMBEDDINGS.
+                                        // Study Page Help doesn't cover Similarity Maps (cast: StudyViewPageTabKey has no EMBEDDINGS).
                                         (this.store.currentTab as string) !==
                                         StudyViewPageTabKeyEnum.EMBEDDINGS ? (
                                             <HelpWidget
