@@ -17,7 +17,7 @@ import {
 import LoadingIndicator from 'shared/components/loadingIndicator/LoadingIndicator';
 import { ClinicalDataTab } from './tabs/ClinicalDataTab';
 import { EmbeddingsTab } from './tabs/EmbeddingsTab';
-import { boehmHeData } from 'shared/components/embeddings/EmbeddingDataSource';
+import { EMBEDDING_MAP_STUDY_IDS } from 'shared/components/embeddings/EmbeddingDataSource';
 import {
     DefaultTooltip,
     getBrowserWindow,
@@ -456,12 +456,9 @@ export default class StudyViewPage extends React.Component<
             return false;
         }
 
-        // Hide entirely (like CN_SEGMENTS) until a map covering a queried study is confirmed to exist.
-        if (boehmHeData.isPending || !boehmHeData.result) {
-            return false;
-        }
+        // Checked locally to avoid triggering the full point-data download.
         return this.store.queriedPhysicalStudyIds.result.some(studyId =>
-            boehmHeData.result!.studyIds.includes(studyId)
+            EMBEDDING_MAP_STUDY_IDS.includes(studyId)
         );
     }
 
@@ -864,7 +861,12 @@ export default class StudyViewPage extends React.Component<
                                                 </strong>
                                             </span>
                                         }
-                                        hide={!this.hasEmbeddingSupport}
+                                        hide={
+                                            !this.hasEmbeddingSupport &&
+                                            (this.store
+                                                .currentTab as string) !==
+                                                StudyViewPageTabKeyEnum.EMBEDDINGS
+                                        }
                                     >
                                         <EmbeddingsTab store={this.store} />
                                     </MSKTab>

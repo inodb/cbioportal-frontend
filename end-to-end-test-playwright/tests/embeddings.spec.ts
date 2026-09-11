@@ -55,7 +55,36 @@ async function gotoEmbeddings(page: Page, query = '') {
     await expect(page.locator(LEGEND)).toBeVisible({ timeout: 60000 });
 }
 
+const EMBEDDINGS_TAB_LINK = '.tabAnchor_embeddings';
+// Not in umap_he_50k.json's studyIds - see EmbeddingDataSource.ts.
+const UNSUPPORTED_STUDY = 'coadread_tcga_pub';
+
 test.describe('embeddings tab interactions', () => {
+    test.describe('tab visibility', () => {
+        test('hides the Similarity Maps tab for a study with no map coverage', async ({
+            page,
+        }) => {
+            await page.goto(
+                `/study/summary?id=${UNSUPPORTED_STUDY}&featureFlags=EMBEDDINGS`
+            );
+            await expect(page.locator('.mainTabs').first()).toBeVisible({
+                timeout: 60000,
+            });
+            await expect(page.locator(EMBEDDINGS_TAB_LINK)).not.toBeVisible();
+        });
+
+        test('shows the Similarity Maps tab when only one of several queried studies has coverage', async ({
+            page,
+        }) => {
+            await page.goto(
+                `/study/summary?id=${STUDY},${UNSUPPORTED_STUDY}&featureFlags=EMBEDDINGS`
+            );
+            await expect(page.locator(EMBEDDINGS_TAB_LINK)).toBeVisible({
+                timeout: 60000,
+            });
+        });
+    });
+
     test.describe('legend interactions', () => {
         test('toggles category visibility when clicking a legend item', async ({
             page,
