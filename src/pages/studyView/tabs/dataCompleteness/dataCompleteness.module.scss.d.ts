@@ -5,8 +5,6 @@ declare const styles: {
   readonly "barFill": string;
   readonly "barTrack": string;
   readonly "checkbox": string;
-  readonly "cohort": string;
-  readonly "cohortValue": string;
   readonly "completeness": string;
   readonly "controls": string;
   readonly "count": string;

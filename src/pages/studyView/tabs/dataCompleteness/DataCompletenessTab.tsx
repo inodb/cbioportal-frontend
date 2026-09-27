@@ -457,9 +457,6 @@ export class DataCompletenessTab extends React.Component<
     }
 
     private renderSummary() {
-        const selectedSamples = this.props.store.selectedSamples.result;
-        const patients = _.uniqBy(selectedSamples, s => s.uniquePatientKey)
-            .length;
         const clinical = this.completenessStore.clinicalRows;
         const profiles = this.completenessStore.profileRows;
         const panels = this.completenessStore.genePanelRows;
@@ -489,20 +486,6 @@ export class DataCompletenessTab extends React.Component<
 
         return (
             <div className={styles.summary}>
-                <div className={styles.cohort}>
-                    <span className={styles.tileLabel}>Selection</span>
-                    <span className={styles.cohortValue}>
-                        {selectedSamples.length.toLocaleString()}{' '}
-                        <small>samples</small>
-                    </span>
-                    <span className={styles.cohortValue}>
-                        {patients.toLocaleString()} <small>patients</small>
-                    </span>
-                    <span className={styles.tileDetail}>
-                        {this.studyIds.length}{' '}
-                        {this.studyIds.length === 1 ? 'study' : 'studies'}
-                    </span>
-                </div>
                 {tile(
                     Section.CLINICAL,
                     'Clinical attributes',
