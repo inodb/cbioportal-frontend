@@ -17,6 +17,7 @@ import {
 import LoadingIndicator from 'shared/components/loadingIndicator/LoadingIndicator';
 import { ClinicalDataTab } from './tabs/ClinicalDataTab';
 import { EmbeddingsTab } from './tabs/EmbeddingsTab';
+import { DataCompletenessTab } from './tabs/dataCompleteness/DataCompletenessTab';
 import { EmbeddingData } from 'shared/components/embeddings/EmbeddingTypes';
 import {
     DefaultTooltip,
@@ -781,6 +782,19 @@ export default class StudyViewPage extends React.Component<
                                         }
                                     >
                                         <ClinicalDataTab store={this.store} />
+                                    </MSKTab>
+                                    <MSKTab
+                                        key={7}
+                                        id={
+                                            StudyViewPageTabKeyEnum.DATA_COMPLETENESS
+                                        }
+                                        linkText={
+                                            StudyViewPageTabDescriptions.DATA_COMPLETENESS
+                                        }
+                                    >
+                                        <DataCompletenessTab
+                                            store={this.store}
+                                        />
                                     </MSKTab>
                                     <MSKTab
                                         key={2}

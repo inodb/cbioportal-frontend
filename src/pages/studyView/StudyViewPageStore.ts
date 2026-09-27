@@ -416,6 +416,7 @@ export enum StudyViewPageTabDescriptions {
     CN_SEGMENTS = 'CN Segments',
     PLOTS = 'Plots',
     EMBEDDINGS = 'Similarity Maps',
+    DATA_COMPLETENESS = 'Data Completeness',
 }
 
 const DEFAULT_CHART_NAME = 'Custom Data';
