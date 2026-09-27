@@ -138,7 +138,12 @@
 }
 
 .number {
+    text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+.alignCenter {
+    text-align: center;
 }
 
 .attributeName {

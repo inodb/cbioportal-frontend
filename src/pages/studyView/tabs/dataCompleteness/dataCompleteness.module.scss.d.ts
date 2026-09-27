@@ -1,4 +1,5 @@
 declare const styles: {
+  readonly "alignCenter": string;
   readonly "attributeId": string;
   readonly "attributeName": string;
   readonly "barFill": string;

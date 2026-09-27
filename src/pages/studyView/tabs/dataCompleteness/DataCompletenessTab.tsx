@@ -165,11 +165,13 @@ export class DataCompletenessTab extends React.Component<
                 ),
                 align: 'center',
                 render: (d: T) => (
-                    <StudyCell
-                        coverage={d.byStudy[studyId]}
-                        studyName={this.studyName(studyId)}
-                        unit={unit(d)}
-                    />
+                    <div className={styles.alignCenter}>
+                        <StudyCell
+                            coverage={d.byStudy[studyId]}
+                            studyName={this.studyName(studyId)}
+                            unit={unit(d)}
+                        />
+                    </div>
                 ),
                 sortBy: (d: T) => {
                     const c = d.byStudy[studyId];
@@ -200,9 +202,9 @@ export class DataCompletenessTab extends React.Component<
             {
                 name: 'With data',
                 render: (d: T) => (
-                    <span className={styles.number}>
+                    <div className={styles.number}>
                         {d.withData.toLocaleString()}
-                    </span>
+                    </div>
                 ),
                 sortBy: (d: T) => d.withData,
                 download: (d: T) => `${d.withData}`,
@@ -213,9 +215,9 @@ export class DataCompletenessTab extends React.Component<
             {
                 name: 'Missing',
                 render: (d: T) => (
-                    <span className={styles.number}>
+                    <div className={styles.number}>
                         {(d.total - d.withData).toLocaleString()}
-                    </span>
+                    </div>
                 ),
                 sortBy: (d: T) => d.total - d.withData,
                 download: (d: T) => `${d.total - d.withData}`,
@@ -366,9 +368,9 @@ export class DataCompletenessTab extends React.Component<
             {
                 name: 'Genes',
                 render: d => (
-                    <span className={styles.number}>
+                    <div className={styles.number}>
                         {genesInPanel(d)?.toLocaleString() ?? ''}
-                    </span>
+                    </div>
                 ),
                 sortBy: d => genesInPanel(d) ?? null,
                 download: d => `${genesInPanel(d) ?? ''}`,
