@@ -9,6 +9,7 @@ declare const styles: {
   readonly "cohortValue": string;
   readonly "completeness": string;
   readonly "controls": string;
+  readonly "count": string;
   readonly "counts": string;
   readonly "dataCompleteness": string;
   readonly "intro": string;

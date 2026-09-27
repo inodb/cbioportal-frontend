@@ -48,7 +48,9 @@ const COMPLETENESS_COLUMN = 'Completeness';
 const CompletenessBar: React.FunctionComponent<{
     coverage: Coverage;
     unit: string;
-}> = ({ coverage, unit }) => {
+    // width of the widest possible count, so counts right-align across rows
+    countWidthCh: number;
+}> = ({ coverage, unit, countWidthCh }) => {
     const fraction = completenessFraction(coverage);
     return (
         <div
@@ -67,7 +69,13 @@ const CompletenessBar: React.FunctionComponent<{
             </div>
             <span className={styles.percent}>{formatPercent(fraction)}</span>
             <span className={styles.counts}>
-                {coverage.withData.toLocaleString()} /{' '}
+                <span
+                    className={styles.count}
+                    style={{ minWidth: `${countWidthCh}ch` }}
+                >
+                    {coverage.withData.toLocaleString()}
+                </span>
+                {' / '}
                 {coverage.total.toLocaleString()}
             </span>
         </div>
@@ -143,6 +151,11 @@ export class DataCompletenessTab extends React.Component<
         return this.props.store.studyIdToStudy.result || {};
     }
 
+    @computed get countWidthCh() {
+        return this.props.store.selectedSamples.result.length.toLocaleString()
+            .length;
+    }
+
     private studyName(studyId: string) {
         return this.studyIdToStudy[studyId]?.name || studyId;
     }
@@ -189,11 +202,17 @@ export class DataCompletenessTab extends React.Component<
     ): Column<T> {
         return {
             name: COMPLETENESS_COLUMN,
-            render: (d: T) => <CompletenessBar coverage={d} unit={unit(d)} />,
+            render: (d: T) => (
+                <CompletenessBar
+                    coverage={d}
+                    unit={unit(d)}
+                    countWidthCh={this.countWidthCh}
+                />
+            ),
             sortBy: (d: T) => [completenessFraction(d), d.withData],
             download: (d: T) => formatPercent(completenessFraction(d)),
             defaultSortDirection: 'desc' as SortDirection,
-            width: 260,
+            width: 290,
         };
     }
 

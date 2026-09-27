@@ -135,6 +135,12 @@
     color: #777;
     font-size: 12px;
     font-variant-numeric: tabular-nums;
+    white-space: pre;
+}
+
+.count {
+    display: inline-block;
+    text-align: right;
 }
 
 .number {
