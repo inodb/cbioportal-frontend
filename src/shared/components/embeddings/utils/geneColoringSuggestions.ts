@@ -16,6 +16,13 @@ type GeneCount = {
     entrezGeneId: number;
     hugoGeneSymbol: string;
     numberOfAlteredCases: number;
+    /**
+     * Altered cases among those profiled for the gene. The share shown is
+     * this over numberOfProfiledCases, as the gene tables show it:
+     * numberOfAlteredCases also counts cases not profiled for the gene, and
+     * over the profiled count could read high, even above 100%.
+     */
+    numberOfAlteredCasesOnPanel?: number;
     numberOfProfiledCases: number;
 };
 
@@ -49,7 +56,12 @@ export function mostFrequentlyAlteredGenes(
         number,
         {
             hugoGeneSymbol: string;
-            kinds: { kind: string; altered: number; profiled: number }[];
+            kinds: {
+                kind: string;
+                altered: number;
+                alteredOnPanel: number;
+                profiled: number;
+            }[];
         }
     >();
     const add = (row: GeneCount, kind: string) => {
@@ -63,6 +75,10 @@ export function mostFrequentlyAlteredGenes(
         entry.kinds.push({
             kind,
             altered: row.numberOfAlteredCases,
+            alteredOnPanel:
+                row.numberOfAlteredCasesOnPanel !== undefined
+                    ? row.numberOfAlteredCasesOnPanel
+                    : row.numberOfAlteredCases,
             profiled: row.numberOfProfiledCases,
         });
         byGene.set(row.entrezGeneId, entry);
@@ -101,7 +117,7 @@ export function mostFrequentlyAlteredGenes(
                 .map(
                     k =>
                         `${k.kind} ${formatAlteredFraction(
-                            k.altered,
+                            k.alteredOnPanel,
                             k.profiled
                         )}`
                 )

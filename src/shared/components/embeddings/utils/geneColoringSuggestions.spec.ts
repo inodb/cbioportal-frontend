@@ -103,6 +103,23 @@ describe('geneColoringSuggestions', () => {
             assert.equal(erbb2.detail, 'Amp 8% · Mut 3%');
         });
 
+        it('takes the share from cases on panel, as the gene tables do', () => {
+            const [gene] = mostFrequentlyAlteredGenes({
+                ...none,
+                mutations: [
+                    {
+                        ...row(1, 'PANEL_LIMITED', 60, 50),
+                        numberOfAlteredCasesOnPanel: 40,
+                    },
+                ],
+            });
+            assert.equal(
+                gene.detail,
+                'Mut 80%',
+                'not 120% from counting cases the panel does not cover'
+            );
+        });
+
         it('leaves out a kind that is a small fraction of the main one', () => {
             const [tp53] = mostFrequentlyAlteredGenes({
                 mutations: [row(7157, 'TP53', 45)],

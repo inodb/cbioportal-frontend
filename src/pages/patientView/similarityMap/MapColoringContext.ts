@@ -161,9 +161,15 @@ export class MapColoringContext
                         this.patientStore.structuralVariantData.result || [],
                 },
                 new Set(
-                    (this.patientStore.oncoKbCancerGenes.result || []).map(
-                        gene => gene.entrezGeneId
-                    )
+                    // fetchOncoKbCancerGenes resolves with the error when
+                    // OncoKB is unreachable, rather than rejecting, so the
+                    // result is not always a list. Without one, the
+                    // patient's genes are still suggested, just unordered by
+                    // cancer relevance.
+                    (Array.isArray(this.patientStore.oncoKbCancerGenes.result)
+                        ? this.patientStore.oncoKbCancerGenes.result
+                        : []
+                    ).map(gene => gene.entrezGeneId)
                 )
             ),
         }),
